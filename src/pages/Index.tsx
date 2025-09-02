@@ -4,6 +4,7 @@ import Sidebar from "@/components/Navigation/Sidebar";
 import MetricCards from "@/components/Dashboard/MetricCards";
 import InventoryGrid from "@/components/Inventory/InventoryGrid";
 import SmartOrdering from "@/components/Orders/SmartOrdering";
+import InsuranceModule from "@/components/Insurance/InsuranceModule";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,8 @@ const Index = () => {
         return <InventoryGrid />;
       case "orders":
         return <SmartOrdering />;
+      case "insurance":
+        return <InsuranceModule />;
       case "suppliers":
         return <SuppliersView />;
       case "search":

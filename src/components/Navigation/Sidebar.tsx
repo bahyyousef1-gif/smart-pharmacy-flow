@@ -58,6 +58,12 @@ const Sidebar = ({ activeTab, onTabChange }: SidebarProps) => {
       badge: null
     },
     {
+      id: "insurance",
+      name: "Insurance",
+      icon: FileText,
+      badge: "12"
+    },
+    {
       id: "alerts",
       name: "Alerts",
       icon: Bell,
