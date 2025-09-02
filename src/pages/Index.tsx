@@ -5,6 +5,7 @@ import MetricCards from "@/components/Dashboard/MetricCards";
 import InventoryGrid from "@/components/Inventory/InventoryGrid";
 import SmartOrdering from "@/components/Orders/SmartOrdering";
 import InsuranceModule from "@/components/Insurance/InsuranceModule";
+import P2POrderingModule from "@/components/P2P/P2POrderingModule";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,8 @@ const Index = () => {
         return <SmartOrdering />;
       case "insurance":
         return <InsuranceModule />;
+      case "p2p-orders":
+        return <P2POrderingModule />;
       case "suppliers":
         return <SuppliersView />;
       case "search":
