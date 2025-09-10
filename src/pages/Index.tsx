@@ -6,6 +6,7 @@ import InventoryGrid from "@/components/Inventory/InventoryGrid";
 import SmartOrdering from "@/components/Orders/SmartOrdering";
 import InsuranceModule from "@/components/Insurance/InsuranceModule";
 import P2POrderingModule from "@/components/P2P/P2POrderingModule";
+import ForecastingDashboard from "@/components/Forecasting/ForecastingDashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,8 @@ const Index = () => {
         return <InsuranceModule />;
       case "p2p-orders":
         return <P2POrderingModule />;
+      case "forecasting":
+        return <ForecastingDashboard />;
       case "suppliers":
         return <SuppliersView />;
       case "search":
