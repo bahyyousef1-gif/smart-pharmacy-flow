@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import DrugsTable from "@/components/Database/DrugsTable";
+
 import { 
   MapPin, 
   Search, 
@@ -56,8 +56,6 @@ const P2POrderingModule = () => {
         </div>
       )}
 
-      {/* Drugs Database */}
-      <DrugsTable />
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
