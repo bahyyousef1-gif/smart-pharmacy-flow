@@ -7,6 +7,7 @@ import SmartOrdering from "@/components/Orders/SmartOrdering";
 import InsuranceModule from "@/components/Insurance/InsuranceModule";
 import P2POrderingModule from "@/components/P2P/P2POrderingModule";
 import ForecastingDashboard from "@/components/Forecasting/ForecastingDashboard";
+import DrugsTable from "@/components/Database/DrugsTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -72,6 +73,9 @@ const DashboardView = () => (
     </div>
     
     <MetricCards />
+    
+    {/* Drugs Database */}
+    <DrugsTable />
     
     {/* Quick Actions & Recent Activity */}
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
