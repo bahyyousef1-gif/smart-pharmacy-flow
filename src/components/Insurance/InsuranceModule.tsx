@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle, XCircle } from "lucide-react";
+import DrugsTable from "@/components/Database/DrugsTable";
 import PatientVerification from "./PatientVerification";
 import CoverageChecker from "./CoverageChecker";
 import ClaimSubmission from "./ClaimSubmission";
@@ -60,6 +61,9 @@ const InsuranceModule = () => {
           ))}
         </div>
       )}
+
+      {/* Drugs Database */}
+      <DrugsTable />
 
       {/* Insurance Tabs */}
       <Tabs defaultValue="dashboard" className="w-full">

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import DrugsTable from "@/components/Database/DrugsTable";
 import { 
   Search, 
   Filter, 
@@ -161,6 +162,9 @@ const InventoryGrid = () => {
           Filters
         </Button>
       </div>
+
+      {/* Drugs Database */}
+      <DrugsTable />
 
       {/* Inventory Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
