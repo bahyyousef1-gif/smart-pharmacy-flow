@@ -10,28 +10,31 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.4"
+    PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
-      medsoap: {
+      "Drugs dataset": {
         Row: {
-          assessment: string | null
-          objectie: string
-          plan: string | null
-          subjective: string
+          date: string | null
+          name: string | null
+          price_EGP: number | null
+          price_USD: number | null
+          stock: string | null
         }
         Insert: {
-          assessment?: string | null
-          objectie: string
-          plan?: string | null
-          subjective: string
+          date?: string | null
+          name?: string | null
+          price_EGP?: number | null
+          price_USD?: number | null
+          stock?: string | null
         }
         Update: {
-          assessment?: string | null
-          objectie?: string
-          plan?: string | null
-          subjective?: string
+          date?: string | null
+          name?: string | null
+          price_EGP?: number | null
+          price_USD?: number | null
+          stock?: string | null
         }
         Relationships: []
       }
