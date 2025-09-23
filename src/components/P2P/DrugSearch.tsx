@@ -1,48 +1,96 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Package, MapPin, DollarSign } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const DrugSearch = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStrength, setSelectedStrength] = useState("");
+  const [drugs, setDrugs] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
-  // Mock drug availability data
-  const drugAvailability = [
-    {
-      drugName: "Metformin HCl",
-      strength: "1000mg",
+  // Fetch all drugs on component mount
+  useEffect(() => {
+    fetchDrugs();
+  }, []);
+
+  const fetchDrugs = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('Drugs dataset')
+        .select('*');
+
+      if (error) throw error;
+
+      setDrugs(data || []);
+    } catch (error) {
+      console.error('Error fetching drugs:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch drug data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Search functionality
+  const handleSearch = () => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const filtered = drugs.filter(drug => 
+      drug.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Transform the data to include mock pharmacy suppliers
+    const resultsWithSuppliers = filtered.map(drug => ({
+      drugName: drug.name,
+      strength: selectedStrength || "Various",
+      priceEGP: drug.price_EGP,
+      priceUSD: drug.price_USD,
+      stock: drug.stock,
       pharmacies: [
         {
           id: "ph001",
           name: "MediCore Pharmacy",
           distance: "0.8 km",
-          price: 45.99,
-          stock: 150,
-          available: true
+          price: drug.price_EGP || 0,
+          stock: drug.stock === "In Stock" ? 150 : 0,
+          available: drug.stock === "In Stock"
         },
         {
-          id: "ph002", 
-          name: "Central Drug Store",
+          id: "ph002",
+          name: "Central Drug Store", 
           distance: "1.2 km",
-          price: 42.50,
-          stock: 89,
-          available: true
+          price: (drug.price_EGP || 0) * 0.95, // 5% discount
+          stock: drug.stock === "In Stock" ? 89 : 0,
+          available: drug.stock === "In Stock"
         },
         {
           id: "ph003",
-          name: "HealthPlus Dispensary", 
-          distance: "2.1 km",
-          price: 48.75,
-          stock: 0,
-          available: false
+          name: "HealthPlus Dispensary",
+          distance: "2.1 km", 
+          price: (drug.price_EGP || 0) * 1.1, // 10% markup
+          stock: Math.random() > 0.5 ? 25 : 0,
+          available: Math.random() > 0.5
         }
       ]
-    }
-  ];
+    }));
+
+    setSearchResults(resultsWithSuppliers);
+  };
 
   return (
     <div className="space-y-6">
@@ -85,9 +133,9 @@ const DrugSearch = () => {
             </div>
             
             <div className="flex items-end">
-              <Button className="w-full">
+              <Button className="w-full" onClick={handleSearch} disabled={loading}>
                 <Search className="h-4 w-4 mr-2" />
-                Search
+                {loading ? "Searching..." : "Search"}
               </Button>
             </div>
           </div>
@@ -101,7 +149,14 @@ const DrugSearch = () => {
             Results for "{searchQuery}" {selectedStrength && `- ${selectedStrength}`}
           </h3>
           
-          {drugAvailability.map((drug, drugIndex) => (
+          {searchResults.length === 0 && !loading ? (
+            <Card>
+              <CardContent className="p-6 text-center">
+                <p className="text-muted-foreground">No drugs found matching your search criteria.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            searchResults.map((drug, drugIndex) => (
             <Card key={drugIndex}>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -170,7 +225,7 @@ const DrugSearch = () => {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          )))}
         </div>
       )}
     </div>
