@@ -50,9 +50,14 @@ const DrugSearch = () => {
       return;
     }
 
+    console.log('Searching for:', searchQuery);
+    console.log('Available drugs:', drugs.length);
+
     const filtered = drugs.filter(drug => 
       drug.name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    console.log('Filtered results:', filtered.length);
 
     // Transform the data to include mock pharmacy suppliers
     const resultsWithSuppliers = filtered.map(drug => ({
@@ -67,28 +72,29 @@ const DrugSearch = () => {
           name: "MediCore Pharmacy",
           distance: "0.8 km",
           price: drug.price_EGP || 0,
-          stock: drug.stock === "In Stock" ? 150 : 0,
-          available: drug.stock === "In Stock"
+          stock: drug.stock === "In Stock" || drug.stock === "Low stock" ? 150 : 0,
+          available: drug.stock === "In Stock" || drug.stock === "Low stock"
         },
         {
           id: "ph002",
           name: "Central Drug Store", 
           distance: "1.2 km",
           price: (drug.price_EGP || 0) * 0.95, // 5% discount
-          stock: drug.stock === "In Stock" ? 89 : 0,
-          available: drug.stock === "In Stock"
+          stock: drug.stock === "In Stock" || drug.stock === "Low stock" ? 89 : 0,
+          available: drug.stock === "In Stock" || drug.stock === "Low stock"
         },
         {
           id: "ph003",
           name: "HealthPlus Dispensary",
           distance: "2.1 km", 
           price: (drug.price_EGP || 0) * 1.1, // 10% markup
-          stock: Math.random() > 0.5 ? 25 : 0,
-          available: Math.random() > 0.5
+          stock: Math.random() > 0.3 ? 25 : 0,
+          available: Math.random() > 0.3
         }
       ]
     }));
 
+    console.log('Results with suppliers:', resultsWithSuppliers);
     setSearchResults(resultsWithSuppliers);
   };
 
@@ -112,9 +118,10 @@ const DrugSearch = () => {
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">Drug Name</label>
               <Input
-                placeholder="Enter drug name..."
+                placeholder="Enter drug name... (e.g., Adol, Actos)"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               />
             </div>
             
@@ -197,7 +204,7 @@ const DrugSearch = () => {
                             
                             <div className="flex items-center gap-1">
                               <DollarSign className="h-4 w-4" />
-                              <span>${pharmacy.price}</span>
+                              <span>EGP {pharmacy.price.toFixed(2)}</span>
                             </div>
                             
                             <div className="flex items-center gap-1">
