@@ -2,8 +2,72 @@ import { Bell, Search, User, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { 
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 const Header = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [drugs, setDrugs] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { toast } = useToast();
+
+  // Fetch drugs for search suggestions
+  useEffect(() => {
+    fetchDrugs();
+  }, []);
+
+  const fetchDrugs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('Drugs dataset')
+        .select('name, price_EGP, price_USD')
+        .limit(100); // Limit for performance
+
+      if (error) throw error;
+      setDrugs(data || []);
+    } catch (error) {
+      console.error('Error fetching drugs:', error);
+    }
+  };
+
+  // Search functionality with debounce effect
+  useEffect(() => {
+    if (searchQuery.length > 2) {
+      const filtered = drugs.filter(drug => 
+        drug.name?.toLowerCase().includes(searchQuery.toLowerCase())
+      ).slice(0, 8); // Show max 8 results
+      
+      setSearchResults(filtered);
+      setIsSearchOpen(true);
+    } else {
+      setSearchResults([]);
+      setIsSearchOpen(false);
+    }
+  }, [searchQuery, drugs]);
+
+  const handleSearchSelect = (drugName: string) => {
+    setSearchQuery(drugName);
+    setIsSearchOpen(false);
+    toast({
+      title: "Drug Selected",
+      description: `You selected: ${drugName}`,
+    });
+  };
   return (
     <header className="bg-card border-b border-border sticky top-0 z-40 shadow-sm">
       <div className="flex items-center justify-between px-6 py-4">
@@ -20,13 +84,46 @@ const Header = () => {
 
         {/* Search Bar */}
         <div className="flex-1 max-w-md mx-8">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search drugs, suppliers, orders..."
-              className="pl-10 bg-muted/50 border-muted-foreground/20"
-            />
-          </div>
+          <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+            <PopoverTrigger asChild>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search drugs, suppliers, orders..."
+                  className="pl-10 bg-muted/50 border-muted-foreground/20"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => searchQuery.length > 2 && setIsSearchOpen(true)}
+                />
+              </div>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-0" align="start">
+              <Command>
+                <CommandList>
+                  {searchResults.length > 0 ? (
+                    <CommandGroup heading="Drugs">
+                      {searchResults.map((drug, index) => (
+                        <CommandItem
+                          key={index}
+                          onSelect={() => handleSearchSelect(drug.name)}
+                          className="cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-medium">{drug.name}</span>
+                            <div className="text-sm text-muted-foreground">
+                              EGP {drug.price_EGP} | USD {drug.price_USD}
+                            </div>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  ) : searchQuery.length > 2 ? (
+                    <CommandEmpty>No drugs found.</CommandEmpty>
+                  ) : null}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Right Side Actions */}
