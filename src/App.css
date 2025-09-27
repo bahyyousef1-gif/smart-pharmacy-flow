@@ -3,6 +3,7 @@
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+  background-color: #fff5f5; /* subtle red background */
 }
 
 .logo {
@@ -12,10 +13,10 @@
   transition: filter 300ms;
 }
 .logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+  filter: drop-shadow(0 0 2em #ff4d4daa); /* red shadow */
 }
 .logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+  filter: drop-shadow(0 0 2em #ff6666aa); /* lighter red shadow */
 }
 
 @keyframes logo-spin {
@@ -35,8 +36,11 @@
 
 .card {
   padding: 2em;
+  background: #ffeaea; /* light red card */
+  border: 1px solid #ff4d4d;
+  border-radius: 8px;
 }
 
 .read-the-docs {
-  color: #888;
+  color: #b30000; /* dark red text */
 }
