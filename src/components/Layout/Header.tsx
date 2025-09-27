@@ -301,7 +301,7 @@ const Header = () => {
           {/* User Profile */}
           <div className="flex items-center space-x-3 pl-4 border-l border-border">
             <div className="text-right">
-              <p className="text-sm font-medium text-foreground">Dr. Sarah Johnson</p>
+              <p className="text-sm font-medium text-foreground">Dr. Karim Elsawy</p>
               <p className="text-xs text-muted-foreground">MediCare Pharmacy</p>
             </div>
             <Button variant="ghost" size="sm" className="p-1">
