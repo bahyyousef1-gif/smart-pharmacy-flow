@@ -3,11 +3,32 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Phone, Clock, Star } from "lucide-react";
+import { MapPin, Phone, Clock, Star, Map } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { toast } from "@/components/ui/use-toast";
 
-const PharmacyLocator = () => {
-  const [selectedRegion, setSelectedRegion] = useState("");
+const mockRegions = [
+  { id: "downtown", name: "Downtown" },
+  { id: "central", name: "Central" },
+  { id: "westside", name: "Westside" },
+];
+
+const mockDrugs = [
+  { id: "d001", name: "Paracetamol 500mg" },
+  { id: "d002", name: "Amoxicillin 250mg" },
+  { id: "d003", name: "Ibuprofen 200mg" },
+];
+
+const PharmacyLocator = ({ onOrderPlaced, selectedRegion, setSelectedRegion }) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [orderModal, setOrderModal] = useState(false);
+  const [orderPharmacy, setOrderPharmacy] = useState(null);
+
+  // Order form state
+  const [selectedDrug, setSelectedDrug] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [urgency, setUrgency] = useState("normal");
 
   // Mock pharmacy data
   const nearbyPharmacies = [
@@ -19,7 +40,8 @@ const PharmacyLocator = () => {
       phone: "+1 234-567-8901",
       rating: 4.8,
       isOpen: true,
-      stockItems: 1250
+      stockItems: 1250,
+      region: "downtown"
     },
     {
       id: "ph002", 
@@ -29,7 +51,8 @@ const PharmacyLocator = () => {
       phone: "+1 234-567-8902",
       rating: 4.6,
       isOpen: true,
-      stockItems: 980
+      stockItems: 980,
+      region: "central"
     },
     {
       id: "ph003",
@@ -39,9 +62,38 @@ const PharmacyLocator = () => {
       phone: "+1 234-567-8903",
       rating: 4.9,
       isOpen: false,
-      stockItems: 1450
+      stockItems: 1450,
+      region: "westside"
     }
   ];
+
+  // Filter by region
+  const filteredPharmacies = selectedRegion
+    ? nearbyPharmacies.filter(ph => ph.region === selectedRegion)
+    : nearbyPharmacies;
+
+  // Handle order placement
+  const handlePlaceOrder = () => {
+    if (!selectedDrug || !quantity || !urgency) return;
+    onOrderPlaced({
+      id: Date.now().toString(),
+      pharmacy: orderPharmacy,
+      drug: mockDrugs.find(d => d.id === selectedDrug)?.name,
+      quantity,
+      urgency,
+      status: "pending",
+      createdAt: new Date(),
+    });
+    setOrderModal(false);
+    setSelectedDrug("");
+    setQuantity(1);
+    setUrgency("normal");
+    toast({
+      title: "Order Placed",
+      description: `Order for ${quantity} x ${mockDrugs.find(d => d.id === selectedDrug)?.name} sent to ${orderPharmacy.name}.`,
+      variant: "success"
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -55,6 +107,36 @@ const PharmacyLocator = () => {
           Auto-Detect Location
         </Button>
       </div>
+
+      {/* Region Selector & Map */}
+      <Card className="rounded-xl bg-red-50/40 border-red-100 transition-all">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Map className="h-5 w-5 text-red-400" />
+            Select Region
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-4 items-center">
+            <Select value={selectedRegion} onValueChange={setSelectedRegion}>
+              <SelectTrigger className="w-48 rounded-lg border-red-200">
+                <SelectValue placeholder="Choose region..." />
+              </SelectTrigger>
+              <SelectContent>
+                {mockRegions.map(region => (
+                  <SelectItem key={region.id} value={region.id}>{region.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex-1">
+              {/* Mock map: replace with real map integration */}
+              <div className="h-32 rounded-lg bg-gradient-to-r from-red-100 to-red-200 flex items-center justify-center text-red-500 font-semibold shadow-inner transition-all">
+                [Interactive Map Placeholder]
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Search Controls */}
       <Card>
@@ -74,8 +156,8 @@ const PharmacyLocator = () => {
 
       {/* Pharmacy List */}
       <div className="grid gap-4">
-        {nearbyPharmacies.map((pharmacy) => (
-          <Card key={pharmacy.id} className="hover:shadow-md transition-shadow">
+        {filteredPharmacies.map((pharmacy) => (
+          <Card key={pharmacy.id} className="hover:shadow-md transition-shadow rounded-xl bg-white/80">
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -111,13 +193,70 @@ const PharmacyLocator = () => {
                 
                 <div className="flex flex-col gap-2">
                   <Button size="sm">View Stock</Button>
-                  <Button size="sm" variant="outline">Send Request</Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setOrderPharmacy(pharmacy);
+                      setOrderModal(true);
+                    }}
+                  >
+                    Send Request
+                  </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Order Modal */}
+      <Dialog open={orderModal} onOpenChange={setOrderModal}>
+        <DialogContent className="rounded-xl bg-white/90 border-red-100 transition-all">
+          <DialogHeader>
+            <DialogTitle>Place Order to {orderPharmacy?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Select value={selectedDrug} onValueChange={setSelectedDrug}>
+              <SelectTrigger className="w-full rounded-lg border-red-200">
+                <SelectValue placeholder="Select Drug..." />
+              </SelectTrigger>
+              <SelectContent>
+                {mockDrugs.map(drug => (
+                  <SelectItem key={drug.id} value={drug.id}>{drug.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              type="number"
+              min={1}
+              value={quantity}
+              onChange={e => setQuantity(Number(e.target.value))}
+              placeholder="Quantity"
+              className="rounded-lg border-red-200"
+            />
+            <Select value={urgency} onValueChange={setUrgency}>
+              <SelectTrigger className="w-full rounded-lg border-red-200">
+                <SelectValue placeholder="Urgency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="urgent">Urgent</SelectItem>
+                <SelectItem value="critical">Critical</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button
+              className="rounded-lg bg-red-500 hover:bg-red-600 text-white transition"
+              onClick={handlePlaceOrder}
+              disabled={!selectedDrug || !quantity}
+            >
+              Place Order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
