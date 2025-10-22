@@ -91,7 +91,6 @@ const PharmacyLocator = ({ onOrderPlaced, selectedRegion, setSelectedRegion }) =
     toast({
       title: "Order Placed",
       description: `Order for ${quantity} x ${mockDrugs.find(d => d.id === selectedDrug)?.name} sent to ${orderPharmacy.name}.`,
-      variant: "success"
     });
   };
 

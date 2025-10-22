@@ -44,7 +44,6 @@ const P2POrderingModule = () => {
     toast({
       title: "New Order Request",
       description: `Order for ${order.quantity} x ${order.drug} placed to ${order.pharmacy.name}.`,
-      variant: "info"
     });
   };
 
@@ -60,7 +59,7 @@ const P2POrderingModule = () => {
     toast({
       title: `Order ${action === "accepted" ? "Accepted" : "Rejected"}`,
       description: `Order has been ${action}.`,
-      variant: action === "accepted" ? "success" : "destructive"
+      variant: action === "accepted" ? "default" : "destructive"
     });
   };
 

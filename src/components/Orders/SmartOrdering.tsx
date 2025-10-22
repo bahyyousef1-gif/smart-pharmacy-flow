@@ -3,22 +3,57 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  ShoppingCart, 
-  TrendingUp, 
   Calculator,
   CheckCircle,
   Edit,
   Trash2,
-  Plus
+  Plus,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Search
 } from "lucide-react";
+
+type SortField = 'drugName' | 'currentStock' | 'suggestedQuantity' | 'unitPrice' | 'totalCost';
+type SortOrder = 'asc' | 'desc';
+
+interface Order {
+  id: string;
+  drugName: string;
+  supplier: string;
+  currentStock: number;
+  minimumStock: number;
+  forecastDemand: number;
+  suggestedQuantity: number;
+  unitPrice: number;
+  daysSupply: number;
+  totalCost: number;
+  status: string;
+  priority: string;
+  expectedDelivery: string;
+  lastOrderDate: string;
+  aiReason: string;
+}
 
 const SmartOrdering = () => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [drugs, setDrugs] = useState<any[]>([]);
+  const [drugs, setDrugs] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortField, setSortField] = useState<SortField>('drugName');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<number>(0);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -35,19 +70,31 @@ const SmartOrdering = () => {
       if (error) throw error;
       
       // Transform drug data into order format
-      const orderSuggestions = (data || []).slice(0, 10).map((drug, index) => ({
-        id: String(index + 1),
-        drugName: drug.name || 'Unknown Drug',
-        supplier: 'AutoSelect Supplier',
-        currentStock: Math.floor(Math.random() * 50) + 5,
-        suggestedQuantity: Math.floor(Math.random() * 100) + 50,
-        unitPrice: drug.price_USD || 0,
-        totalCost: (drug.price_USD || 0) * (Math.floor(Math.random() * 100) + 50),
-        priority: ['High', 'Medium', 'Low'][Math.floor(Math.random() * 3)],
-        expectedDelivery: '2-3 days',
-        lastOrderDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        aiReason: `Low stock detected. Predicted demand based on sales history.`
-      }));
+      const orderSuggestions = (data || []).slice(0, 10).map((drug, index) => {
+        const suggestedQty = Math.floor(Math.random() * 100) + 50;
+        const unitPrice = drug.price_USD || 0;
+        const minStock = Math.floor(Math.random() * 30) + 10;
+        const currentStock = Math.floor(Math.random() * 50) + 5;
+        const forecastDemand = Math.floor(Math.random() * 150) + 80;
+        
+        return {
+          id: String(index + 1),
+          drugName: drug.name || 'Unknown Drug',
+          supplier: 'AutoSelect Supplier',
+          currentStock,
+          minimumStock: minStock,
+          forecastDemand,
+          suggestedQuantity: suggestedQty,
+          unitPrice,
+          daysSupply: Math.floor(Math.random() * 60) + 30,
+          totalCost: unitPrice * suggestedQty,
+          status: currentStock < minStock ? 'urgent' : forecastDemand > currentStock * 2 ? 'suggested' : 'optimal',
+          priority: ['High', 'Medium', 'Low'][Math.floor(Math.random() * 3)],
+          expectedDelivery: '2-3 days',
+          lastOrderDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          aiReason: `Low stock detected. Predicted demand based on sales history.`
+        };
+      });
       
       setDrugs(orderSuggestions);
     } catch (error) {
@@ -69,9 +116,9 @@ const SmartOrdering = () => {
       case "urgent":
         return <Badge className="bg-destructive/10 text-destructive border-destructive/20">Urgent</Badge>;
       case "suggested":
-        return <Badge className="bg-warning-light text-warning border-warning/20">Suggested</Badge>;
+        return <Badge className="bg-warning/10 text-warning border-warning/20">Suggested</Badge>;
       case "optimal":
-        return <Badge className="bg-success-light text-success border-success/20">Optimal</Badge>;
+        return <Badge className="bg-primary/10 text-primary border-primary/20">Optimal</Badge>;
       default:
         return <Badge variant="outline">Review</Badge>;
     }
@@ -86,7 +133,74 @@ const SmartOrdering = () => {
     setDrugs(updatedDrugs);
   };
 
-  const totalOrderValue = orders.reduce((sum, order) => sum + order.totalCost, 0);
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 inline opacity-40" />;
+    }
+    return sortOrder === 'asc' 
+      ? <ArrowUp className="h-4 w-4 ml-1 inline text-primary" />
+      : <ArrowDown className="h-4 w-4 ml-1 inline text-primary" />;
+  };
+
+  const handleEditStart = (order: Order) => {
+    setEditingId(order.id);
+    setEditValue(order.suggestedQuantity);
+  };
+
+  const handleEditSave = (orderId: string) => {
+    updateQuantity(orderId, editValue);
+    setEditingId(null);
+    toast({
+      title: "Quantity Updated",
+      description: "Order quantity has been updated successfully.",
+    });
+  };
+
+  const handleEditCancel = () => {
+    setEditingId(null);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, orderId: string) => {
+    if (e.key === 'Enter') {
+      handleEditSave(orderId);
+    } else if (e.key === 'Escape') {
+      handleEditCancel();
+    }
+  };
+
+  // Filter orders by search term
+  const filteredOrders = orders.filter(order =>
+    order.drugName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Sort orders
+  const sortedOrders = [...filteredOrders].sort((a, b) => {
+    const aVal = a[sortField];
+    const bVal = b[sortField];
+    
+    if (typeof aVal === 'string' && typeof bVal === 'string') {
+      return sortOrder === 'asc' 
+        ? aVal.localeCompare(bVal)
+        : bVal.localeCompare(aVal);
+    }
+    
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+    }
+    
+    return 0;
+  });
+
+  const totalOrderValue = sortedOrders.reduce((sum, order) => sum + order.totalCost, 0);
 
   return (
     <div className="space-y-6">
@@ -101,7 +215,7 @@ const SmartOrdering = () => {
             <Plus className="h-4 w-4 mr-2" />
             Add Manual Order
           </Button>
-          <Button className="bg-primary hover:bg-primary-hover text-primary-foreground">
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
             <CheckCircle className="h-4 w-4 mr-2" />
             Approve All Orders
           </Button>
@@ -120,7 +234,7 @@ const SmartOrdering = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Total Items</p>
-              <p className="text-2xl font-bold text-foreground">{orders.length}</p>
+              <p className="text-2xl font-bold text-foreground">{sortedOrders.length}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Value</p>
@@ -129,7 +243,7 @@ const SmartOrdering = () => {
             <div>
               <p className="text-sm text-muted-foreground">Urgent Orders</p>
               <p className="text-2xl font-bold text-destructive">
-                {orders.filter(o => o.status === "urgent").length}
+                {sortedOrders.filter(o => o.status === "urgent").length}
               </p>
             </div>
             <div>
@@ -140,97 +254,135 @@ const SmartOrdering = () => {
         </CardContent>
       </Card>
 
+      {/* Search Bar */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by drug name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Orders List */}
-      <div className="space-y-4">
-        {orders.map((order) => (
-          <Card key={order.id} className="hover:shadow-md transition-all duration-200">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-lg font-semibold text-foreground">
-                    {order.drugName}
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Supplier: {order.supplier} • ETA: {order.deliveryETA}
-                  </p>
-                </div>
-                {getStatusBadge(order.status)}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Stock Information */}
-                <div className="space-y-3">
-                  <h4 className="font-medium text-foreground">Stock Analysis</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Current Stock:</span>
-                      <span className="font-medium">{order.currentStock} units</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Minimum Stock:</span>
-                      <span className="font-medium">{order.minimumStock} units</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">30-day Forecast:</span>
-                      <span className="font-medium flex items-center">
-                        <TrendingUp className="h-3 w-3 mr-1 text-accent" />
-                        {order.forecastDemand} units
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Order Details */}
-                <div className="space-y-3">
-                  <h4 className="font-medium text-foreground">Order Details</h4>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">Suggested Qty:</span>
-                      <Input
-                        type="number"
-                        value={order.suggestedQuantity}
-                        onChange={(e) => updateQuantity(order.id, parseInt(e.target.value) || 0)}
-                        className="w-20 h-8 text-sm"
-                      />
-                      <span className="text-sm text-muted-foreground">units</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Unit Price:</span>
-                      <span className="font-medium">${order.unitPrice}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Days Supply:</span>
-                      <span className="font-medium">{order.daysSupply} days</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Cost and Actions */}
-                <div className="space-y-3">
-                  <h4 className="font-medium text-foreground">Total Cost</h4>
-                  <div className="text-2xl font-bold text-primary">
-                    ${order.totalCost.toFixed(2)}
-                  </div>
-                  <div className="flex gap-2 pt-2">
-                    <Button size="sm" className="flex-1">
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Approve
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Orders Table */}
+      <Card>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => handleSort('drugName')}
+                >
+                  Drug Name {getSortIcon('drugName')}
+                </TableHead>
+                <TableHead>Supplier</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50 text-right"
+                  onClick={() => handleSort('currentStock')}
+                >
+                  Current Stock {getSortIcon('currentStock')}
+                </TableHead>
+                <TableHead className="text-right">Min Stock</TableHead>
+                <TableHead className="text-right">Forecast</TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50 text-right"
+                  onClick={() => handleSort('suggestedQuantity')}
+                >
+                  Suggested Qty {getSortIcon('suggestedQuantity')}
+                </TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50 text-right"
+                  onClick={() => handleSort('unitPrice')}
+                >
+                  Unit Price {getSortIcon('unitPrice')}
+                </TableHead>
+                <TableHead className="text-right">Days Supply</TableHead>
+                <TableHead 
+                  className="cursor-pointer hover:bg-muted/50 text-right"
+                  onClick={() => handleSort('totalCost')}
+                >
+                  Total Cost {getSortIcon('totalCost')}
+                </TableHead>
+                <TableHead className="text-center">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                    Loading orders...
+                  </TableCell>
+                </TableRow>
+              ) : sortedOrders.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                    No orders found matching "{searchTerm}"
+                  </TableCell>
+                </TableRow>
+              ) : (
+                sortedOrders.map((order) => (
+                  <TableRow 
+                    key={order.id}
+                    className={editingId === order.id ? "bg-primary/5" : ""}
+                  >
+                    <TableCell className="font-medium">{order.drugName}</TableCell>
+                    <TableCell className="text-muted-foreground">{order.supplier}</TableCell>
+                    <TableCell>{getStatusBadge(order.status)}</TableCell>
+                    <TableCell className="text-right">{order.currentStock}</TableCell>
+                    <TableCell className="text-right">{order.minimumStock}</TableCell>
+                    <TableCell className="text-right">{order.forecastDemand}</TableCell>
+                    <TableCell className="text-right">
+                      {editingId === order.id ? (
+                        <Input
+                          type="number"
+                          value={editValue}
+                          onChange={(e) => setEditValue(parseInt(e.target.value) || 0)}
+                          onKeyDown={(e) => handleKeyDown(e, order.id)}
+                          className="w-20 h-8 text-right"
+                          autoFocus
+                          onBlur={() => handleEditSave(order.id)}
+                        />
+                      ) : (
+                        <span 
+                          className="cursor-pointer hover:text-primary underline-offset-4 hover:underline"
+                          onClick={() => handleEditStart(order)}
+                        >
+                          {order.suggestedQuantity}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">${order.unitPrice.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{order.daysSupply}</TableCell>
+                    <TableCell className="text-right font-semibold text-primary">
+                      ${order.totalCost.toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1 justify-center">
+                        <Button size="sm" className="h-8 px-2">
+                          <CheckCircle className="h-3 w-3" />
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-8 px-2">
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-8 px-2">
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
     </div>
   );
 };
