@@ -5,19 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
 
 const Header = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -26,6 +22,12 @@ const Header = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selectedDrug, setSelectedDrug] = useState<any>(null);
   const [showDrugDetails, setShowDrugDetails] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notifications] = useState([
+    { id: 1, type: "warning", message: "5 items critically low stock", time: "2m ago" },
+    { id: 2, type: "info", message: "New order approved", time: "1h ago" },
+    { id: 3, type: "alert", message: "3 items expiring soon", time: "3h ago" },
+  ]);
   const { toast } = useToast();
 
   // Fetch drugs for search suggestions
@@ -178,39 +180,38 @@ const Header = () => {
               className="w-[400px] p-0 bg-background border border-border shadow-lg z-50" 
               align="start"
             >
-              <Command className="bg-background">
-                <CommandList className="bg-background">
-                  {searchResults.length > 0 ? (
-                    <CommandGroup heading="Smart Drug Suggestions" className="bg-background">
-                      {searchResults.map((drug, index) => (
-                        <CommandItem
-                          key={index}
-                          onSelect={() => handleSearchSelect(drug)}
-                          className="cursor-pointer hover:bg-accent p-3 bg-background"
-                        >
-                          <div className="flex flex-col w-full space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium text-foreground">{drug.name}</span>
-                              <Badge variant="outline" className="text-xs">
-                                Score: {drug.score || 'Match'}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <span>EGP {drug.price_EGP}</span>
-                              <span>USD {drug.price_USD}</span>
-                              <span>Stock: {getStockStatus(drug.stock)}</span>
-                            </div>
+              <div className="bg-background p-4 space-y-2">
+                {searchResults.length > 0 ? (
+                  <>
+                    <h4 className="text-sm font-semibold text-muted-foreground mb-2">Smart Drug Suggestions</h4>
+                    {searchResults.map((drug, index) => (
+                      <div
+                        key={index}
+                        onClick={() => handleSearchSelect(drug)}
+                        className="cursor-pointer hover:bg-accent p-3 rounded-lg bg-background transition-colors"
+                      >
+                        <div className="flex flex-col w-full space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-foreground">{drug.name}</span>
+                            <Badge variant="outline" className="text-xs">
+                              Score: {drug.score || 'Match'}
+                            </Badge>
                           </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  ) : searchQuery.length >= 2 ? (
-                    <CommandEmpty className="p-4 text-center text-muted-foreground">
-                      No drugs found matching "{searchQuery}"
-                    </CommandEmpty>
-                  ) : null}
-                </CommandList>
-              </Command>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <span>EGP {drug.price_EGP}</span>
+                            <span>USD {drug.price_USD}</span>
+                            <span>Stock: {getStockStatus(drug.stock)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                ) : searchQuery.length >= 2 ? (
+                  <div className="p-4 text-center text-muted-foreground">
+                    No drugs found matching "{searchQuery}"
+                  </div>
+                ) : null}
+              </div>
             </PopoverContent>
           </Popover>
 
@@ -291,12 +292,55 @@ const Header = () => {
         {/* Right Side Actions */}
         <div className="flex items-center space-x-4">
           {/* Notifications */}
-          <Button variant="ghost" size="sm" className="relative">
-            <Bell className="h-5 w-5" />
-            <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs bg-warning text-warning-foreground">
-              3
-            </Badge>
-          </Button>
+          <Popover open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="relative">
+                <Bell className="h-5 w-5" />
+                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs bg-warning text-warning-foreground">
+                  {notifications.length}
+                </Badge>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="end">
+              <div className="space-y-4">
+                <h4 className="font-semibold text-foreground">Notifications</h4>
+                <div className="space-y-2">
+                  {notifications.map((notification) => (
+                    <Card key={notification.id} className="cursor-pointer hover:bg-accent/50 transition-colors">
+                      <CardContent className="p-3">
+                        <div className="flex items-start gap-3">
+                          <Badge 
+                            variant={notification.type === "warning" ? "destructive" : "default"}
+                            className="mt-1"
+                          >
+                            {notification.type}
+                          </Badge>
+                          <div className="flex-1">
+                            <p className="text-sm text-foreground">{notification.message}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => {
+                    toast({
+                      title: "Notifications cleared",
+                      description: "All notifications have been marked as read.",
+                    });
+                    setIsNotificationOpen(false);
+                  }}
+                >
+                  Clear All
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* User Profile */}
           <div className="flex items-center space-x-3 pl-4 border-l border-border">

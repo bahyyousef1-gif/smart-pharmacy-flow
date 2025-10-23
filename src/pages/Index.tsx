@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import Header from "@/components/Layout/Header";
 import Sidebar from "@/components/Navigation/Sidebar";
 import MetricCards from "@/components/Dashboard/MetricCards";
@@ -36,27 +37,27 @@ const Index = () => {
         return <ForecastingDashboard />;
       case "suppliers":
         return <SuppliersView />;
-      case "search":
-        return <DrugSearchView />;
-      case "reports":
-        return <ReportsView />;
       case "alerts":
         return <AlertsView />;
+      case "help":
+        return <HelpView />;
       default:
         return <DashboardView />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Header />
-      <div className="flex-1 flex">
-        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
-        <main className="flex-1 p-6 overflow-auto">
-          {renderContent()}
-        </main>
+    <CurrencyProvider>
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header />
+        <div className="flex-1 flex">
+          <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+          <main className="flex-1 p-6 overflow-auto">
+            {renderContent()}
+          </main>
+        </div>
       </div>
-    </div>
+    </CurrencyProvider>
   );
 };
 
@@ -148,35 +149,23 @@ const SuppliersView = () => (
   </div>
 );
 
-const DrugSearchView = () => (
-  <div className="space-y-6">
-    <h2 className="text-2xl font-bold text-foreground">Drug Search & Comparison</h2>
-    <Card>
-      <CardContent className="p-12 text-center">
-        <p className="text-muted-foreground">Advanced drug search with supplier comparison coming soon...</p>
-      </CardContent>
-    </Card>
-  </div>
-);
-
-const ReportsView = () => (
-  <div className="space-y-6">
-    <h2 className="text-2xl font-bold text-foreground">Reports & Analytics</h2>
-    <Card>
-      <CardContent className="p-12 text-center">
-        <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <p className="text-muted-foreground">Comprehensive reporting dashboard coming soon...</p>
-      </CardContent>
-    </Card>
-  </div>
-);
-
 const AlertsView = () => (
   <div className="space-y-6">
     <h2 className="text-2xl font-bold text-foreground">Alerts & Notifications</h2>
     <Card>
       <CardContent className="p-12 text-center">
         <p className="text-muted-foreground">Alert management system coming soon...</p>
+      </CardContent>
+    </Card>
+  </div>
+);
+
+const HelpView = () => (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-foreground">Help & Manual</h2>
+    <Card>
+      <CardContent className="p-12 text-center">
+        <p className="text-muted-foreground">User manual and help resources coming soon...</p>
       </CardContent>
     </Card>
   </div>

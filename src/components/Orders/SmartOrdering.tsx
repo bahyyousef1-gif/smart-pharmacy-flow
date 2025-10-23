@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -47,6 +50,7 @@ interface Order {
 }
 
 const SmartOrdering = () => {
+  const { formatCurrency } = useCurrency();
   const [searchTerm, setSearchTerm] = useState("");
   const [drugs, setDrugs] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +58,7 @@ const SmartOrdering = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState<number>(0);
+  const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -144,11 +149,11 @@ const SmartOrdering = () => {
 
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) {
-      return <ArrowUpDown className="h-4 w-4 ml-1 inline opacity-40" />;
+      return <ArrowUpDown className="h-5 w-5 ml-2 inline opacity-40" />;
     }
     return sortOrder === 'asc' 
-      ? <ArrowUp className="h-4 w-4 ml-1 inline text-primary" />
-      : <ArrowDown className="h-4 w-4 ml-1 inline text-primary" />;
+      ? <ArrowUp className="h-5 w-5 ml-2 inline text-primary" />
+      : <ArrowDown className="h-5 w-5 ml-2 inline text-primary" />;
   };
 
   const handleEditStart = (order: Order) => {
@@ -211,10 +216,38 @@ const SmartOrdering = () => {
           <p className="text-muted-foreground">AI-powered inventory replenishment suggestions</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Manual Order
-          </Button>
+          <Dialog open={isAddOrderOpen} onOpenChange={setIsAddOrderOpen}>
+            <DialogTrigger asChild>
+              <Button variant="secondary">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Manual Order
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add Manual Order</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>Drug Name</Label>
+                  <Input placeholder="Enter drug name" />
+                </div>
+                <div>
+                  <Label>Supplier</Label>
+                  <Input placeholder="Enter supplier name" />
+                </div>
+                <div>
+                  <Label>Quantity</Label>
+                  <Input type="number" placeholder="Enter quantity" />
+                </div>
+                <div>
+                  <Label>Unit Price</Label>
+                  <Input type="number" placeholder="Enter unit price" />
+                </div>
+                <Button className="w-full">Submit Order</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
             <CheckCircle className="h-4 w-4 mr-2" />
             Approve All Orders
@@ -238,7 +271,7 @@ const SmartOrdering = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Value</p>
-              <p className="text-2xl font-bold text-foreground">${totalOrderValue.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-foreground">{formatCurrency(totalOrderValue)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Urgent Orders</p>
@@ -276,39 +309,49 @@ const SmartOrdering = () => {
             <TableHeader>
               <TableRow>
                 <TableHead 
-                  className="cursor-pointer hover:bg-muted/50"
+                  className="cursor-pointer hover:bg-muted/50 border-2 border-primary/20"
                   onClick={() => handleSort('drugName')}
                 >
-                  Drug Name {getSortIcon('drugName')}
+                  <Button variant="ghost" size="lg" className="font-semibold text-primary hover:text-primary hover:bg-primary/10">
+                    Drug Name {getSortIcon('drugName')}
+                  </Button>
                 </TableHead>
                 <TableHead>Supplier</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 text-right"
+                  className="cursor-pointer hover:bg-muted/50 text-right border-2 border-primary/20"
                   onClick={() => handleSort('currentStock')}
                 >
-                  Current Stock {getSortIcon('currentStock')}
+                  <Button variant="ghost" size="lg" className="font-semibold text-primary hover:text-primary hover:bg-primary/10">
+                    Current Stock {getSortIcon('currentStock')}
+                  </Button>
                 </TableHead>
                 <TableHead className="text-right">Min Stock</TableHead>
                 <TableHead className="text-right">Forecast</TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 text-right"
+                  className="cursor-pointer hover:bg-muted/50 text-right border-2 border-primary/20"
                   onClick={() => handleSort('suggestedQuantity')}
                 >
-                  Suggested Qty {getSortIcon('suggestedQuantity')}
+                  <Button variant="ghost" size="lg" className="font-semibold text-primary hover:text-primary hover:bg-primary/10">
+                    Suggested Qty {getSortIcon('suggestedQuantity')}
+                  </Button>
                 </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 text-right"
+                  className="cursor-pointer hover:bg-muted/50 text-right border-2 border-primary/20"
                   onClick={() => handleSort('unitPrice')}
                 >
-                  Unit Price {getSortIcon('unitPrice')}
+                  <Button variant="ghost" size="lg" className="font-semibold text-primary hover:text-primary hover:bg-primary/10">
+                    Unit Price {getSortIcon('unitPrice')}
+                  </Button>
                 </TableHead>
                 <TableHead className="text-right">Days Supply</TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 text-right"
+                  className="cursor-pointer hover:bg-muted/50 text-right border-2 border-primary/20"
                   onClick={() => handleSort('totalCost')}
                 >
-                  Total Cost {getSortIcon('totalCost')}
+                  <Button variant="ghost" size="lg" className="font-semibold text-primary hover:text-primary hover:bg-primary/10">
+                    Total Cost {getSortIcon('totalCost')}
+                  </Button>
                 </TableHead>
                 <TableHead className="text-center">Actions</TableHead>
               </TableRow>

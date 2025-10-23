@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -13,13 +15,19 @@ import {
   Package,
   Eye,
   Edit,
-  Plus
+  Plus,
+  ZoomIn,
+  ZoomOut,
+  Settings
 } from "lucide-react";
 
 const InventoryGrid = () => {
+  const { formatCurrency } = useCurrency();
   const [searchTerm, setSearchTerm] = useState("");
   const [drugs, setDrugs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [gridCols, setGridCols] = useState(3);
+  const [editMode, setEditMode] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -106,10 +114,16 @@ const InventoryGrid = () => {
           <h2 className="text-2xl font-bold text-foreground">Inventory Management</h2>
           <p className="text-muted-foreground">Monitor stock levels and manage your pharmacy inventory</p>
         </div>
-        <Button className="bg-primary hover:bg-primary-hover text-primary-foreground">
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Item
-        </Button>
+        <div className="flex gap-2">
+          <Button variant={editMode ? "default" : "outline"} onClick={() => setEditMode(!editMode)}>
+            <Settings className="h-4 w-4 mr-2" />
+            {editMode ? "Exit Edit" : "Edit Mode"}
+          </Button>
+          <Button className="bg-primary hover:bg-primary-hover text-primary-foreground">
+            <Plus className="h-4 w-4 mr-2" />
+            Add New Item
+          </Button>
+        </div>
       </div>
 
       {/* Search and Filters */}
@@ -130,8 +144,26 @@ const InventoryGrid = () => {
       </div>
 
 
+      {/* Zoom Control */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="sm" onClick={() => gridCols > 1 && setGridCols(gridCols - 1)}>
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <div className="flex items-center gap-2 flex-1">
+              <span className="text-sm text-muted-foreground">Cards: {gridCols}</span>
+              <Slider value={[gridCols]} onValueChange={(v) => setGridCols(v[0])} min={1} max={5} step={1} className="flex-1" />
+            </div>
+            <Button variant="outline" size="sm" onClick={() => gridCols < 5 && setGridCols(gridCols + 1)}>
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Inventory Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className={`grid gap-6`} style={{ gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))` }}>
         {filteredItems.map((item) => (
           <Card key={item.id} className="hover:shadow-md transition-all duration-200 border-border/60">
             <CardHeader className="pb-3">
@@ -171,7 +203,7 @@ const InventoryGrid = () => {
                   </div>
                   <div>
                     <p className="text-muted-foreground">Unit Price</p>
-                    <p className="font-medium text-foreground">${item.unitPrice}</p>
+                    <p className="font-medium text-foreground">{formatCurrency(item.unitPrice)}</p>
                   </div>
                 </div>
 

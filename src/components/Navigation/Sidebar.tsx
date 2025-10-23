@@ -40,34 +40,10 @@ const Sidebar = ({ activeTab, onTabChange }: SidebarProps) => {
       badge: "8"
     },
     {
-      id: "suppliers",
-      name: "Suppliers",
-      icon: Users,
-      badge: null
-    },
-    {
-      id: "search",
-      name: "Drug Search",
-      icon: Search,
-      badge: null
-    },
-    {
-      id: "reports",
-      name: "Reports",
-      icon: BarChart3,
-      badge: null
-    },
-    {
       id: "forecasting",
       name: "Forecasting",
       icon: BarChart3,
       badge: null
-    },
-    {
-      id: "insurance",
-      name: "Insurance",
-      icon: FileText,
-      badge: "12"
     },
     {
       id: "p2p-orders",
@@ -76,10 +52,28 @@ const Sidebar = ({ activeTab, onTabChange }: SidebarProps) => {
       badge: "3"
     },
     {
+      id: "insurance",
+      name: "Insurance",
+      icon: FileText,
+      badge: "12"
+    },
+    {
       id: "alerts",
       name: "Alerts",
       icon: Bell,
       badge: "5"
+    },
+    {
+      id: "suppliers",
+      name: "Suppliers",
+      icon: Users,
+      badge: null
+    },
+    {
+      id: "help",
+      name: "Help",
+      icon: FileText,
+      badge: null
     }
   ];
 
