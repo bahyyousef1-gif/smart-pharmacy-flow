@@ -56,8 +56,6 @@ const SmartOrdering = () => {
   const [loading, setLoading] = useState(true);
   const [sortField, setSortField] = useState<SortField>('drugName');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState<number>(0);
   const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
   const { toast } = useToast();
 
@@ -138,6 +136,13 @@ const SmartOrdering = () => {
     setDrugs(updatedDrugs);
   };
 
+  const handleQuantityChange = (orderId: string, value: string) => {
+    const newQuantity = parseInt(value) || 0;
+    if (newQuantity >= 0) {
+      updateQuantity(orderId, newQuantity);
+    }
+  };
+
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -154,32 +159,6 @@ const SmartOrdering = () => {
     return sortOrder === 'asc' 
       ? <ArrowUp className="h-5 w-5 ml-2 inline text-primary" />
       : <ArrowDown className="h-5 w-5 ml-2 inline text-primary" />;
-  };
-
-  const handleEditStart = (order: Order) => {
-    setEditingId(order.id);
-    setEditValue(order.suggestedQuantity);
-  };
-
-  const handleEditSave = (orderId: string) => {
-    updateQuantity(orderId, editValue);
-    setEditingId(null);
-    toast({
-      title: "Quantity Updated",
-      description: "Order quantity has been updated successfully.",
-    });
-  };
-
-  const handleEditCancel = () => {
-    setEditingId(null);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent, orderId: string) => {
-    if (e.key === 'Enter') {
-      handleEditSave(orderId);
-    } else if (e.key === 'Escape') {
-      handleEditCancel();
-    }
   };
 
   // Filter orders by search term
@@ -371,10 +350,7 @@ const SmartOrdering = () => {
                 </TableRow>
               ) : (
                 sortedOrders.map((order) => (
-                  <TableRow 
-                    key={order.id}
-                    className={editingId === order.id ? "bg-primary/5" : ""}
-                  >
+                  <TableRow key={order.id}>
                     <TableCell className="font-medium">{order.drugName}</TableCell>
                     <TableCell className="text-muted-foreground">{order.supplier}</TableCell>
                     <TableCell>{getStatusBadge(order.status)}</TableCell>
@@ -382,24 +358,13 @@ const SmartOrdering = () => {
                     <TableCell className="text-right">{order.minimumStock}</TableCell>
                     <TableCell className="text-right">{order.forecastDemand}</TableCell>
                     <TableCell className="text-right">
-                      {editingId === order.id ? (
-                        <Input
-                          type="number"
-                          value={editValue}
-                          onChange={(e) => setEditValue(parseInt(e.target.value) || 0)}
-                          onKeyDown={(e) => handleKeyDown(e, order.id)}
-                          className="w-20 h-8 text-right"
-                          autoFocus
-                          onBlur={() => handleEditSave(order.id)}
-                        />
-                      ) : (
-                        <span 
-                          className="cursor-pointer hover:text-primary underline-offset-4 hover:underline"
-                          onClick={() => handleEditStart(order)}
-                        >
-                          {order.suggestedQuantity}
-                        </span>
-                      )}
+                      <Input
+                        type="number"
+                        value={order.suggestedQuantity}
+                        onChange={(e) => handleQuantityChange(order.id, e.target.value)}
+                        className="w-24 h-9 text-right border-border/60 hover:border-border hover:shadow-sm transition-all"
+                        min="0"
+                      />
                     </TableCell>
                     <TableCell className="text-right">${order.unitPrice.toFixed(2)}</TableCell>
                     <TableCell className="text-right">{order.daysSupply}</TableCell>
