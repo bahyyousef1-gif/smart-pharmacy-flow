@@ -298,17 +298,17 @@ const SmartOrdering = () => {
                 <TableHead>Supplier</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 text-right border-2 border-primary/20"
+                  className="cursor-pointer hover:bg-muted/50 text-center border-2 border-primary/20"
                   onClick={() => handleSort('currentStock')}
                 >
                   <Button variant="ghost" size="lg" className="font-semibold text-primary hover:text-primary hover:bg-primary/10">
                     Current Stock {getSortIcon('currentStock')}
                   </Button>
                 </TableHead>
-                <TableHead className="text-right">Min Stock</TableHead>
-                <TableHead className="text-right">Forecast</TableHead>
+                <TableHead className="text-center">Min Stock</TableHead>
+                <TableHead className="text-center">Forecast</TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 text-right border-2 border-primary/20"
+                  className="cursor-pointer hover:bg-muted/50 text-center border-2 border-primary/20"
                   onClick={() => handleSort('suggestedQuantity')}
                 >
                   <Button variant="ghost" size="lg" className="font-semibold text-primary hover:text-primary hover:bg-primary/10">
@@ -316,16 +316,16 @@ const SmartOrdering = () => {
                   </Button>
                 </TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 text-right border-2 border-primary/20"
+                  className="cursor-pointer hover:bg-muted/50 text-center border-2 border-primary/20"
                   onClick={() => handleSort('unitPrice')}
                 >
                   <Button variant="ghost" size="lg" className="font-semibold text-primary hover:text-primary hover:bg-primary/10">
                     Unit Price {getSortIcon('unitPrice')}
                   </Button>
                 </TableHead>
-                <TableHead className="text-right">Days Supply</TableHead>
+                <TableHead className="text-center">Days Supply</TableHead>
                 <TableHead 
-                  className="cursor-pointer hover:bg-muted/50 text-right border-2 border-primary/20"
+                  className="cursor-pointer hover:bg-muted/50 text-center border-2 border-primary/20"
                   onClick={() => handleSort('totalCost')}
                 >
                   <Button variant="ghost" size="lg" className="font-semibold text-primary hover:text-primary hover:bg-primary/10">
@@ -354,21 +354,21 @@ const SmartOrdering = () => {
                     <TableCell className="font-medium">{order.drugName}</TableCell>
                     <TableCell className="text-muted-foreground">{order.supplier}</TableCell>
                     <TableCell>{getStatusBadge(order.status)}</TableCell>
-                    <TableCell className="text-right">{order.currentStock}</TableCell>
-                    <TableCell className="text-right">{order.minimumStock}</TableCell>
-                    <TableCell className="text-right">{order.forecastDemand}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-center">{order.currentStock}</TableCell>
+                    <TableCell className="text-center">{order.minimumStock}</TableCell>
+                    <TableCell className="text-center">{order.forecastDemand}</TableCell>
+                    <TableCell className="text-center">
                       <Input
                         type="number"
                         value={order.suggestedQuantity}
                         onChange={(e) => handleQuantityChange(order.id, e.target.value)}
-                        className="w-24 h-9 text-right border-border/60 hover:border-border hover:shadow-sm transition-all"
+                        className="w-24 h-9 text-center border-border/60 hover:border-border hover:shadow-sm transition-all mx-auto"
                         min="0"
                       />
                     </TableCell>
-                    <TableCell className="text-right">${order.unitPrice.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{order.daysSupply}</TableCell>
-                    <TableCell className="text-right font-semibold text-primary">
+                    <TableCell className="text-center">${order.unitPrice.toFixed(2)}</TableCell>
+                    <TableCell className="text-center">{order.daysSupply}</TableCell>
+                    <TableCell className="text-center font-semibold text-primary">
                       ${order.totalCost.toFixed(2)}
                     </TableCell>
                     <TableCell>
