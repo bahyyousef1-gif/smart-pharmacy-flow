@@ -219,32 +219,26 @@ const ForecastingDashboard = () => {
 
   const budgetAllocation = calculateBudgetAllocation();
   
-  const budgetComparisonData = [
-    {
-      category: 'Essential Drugs',
-      fullDemand: budgetAllocation.withinBudget
-        .filter(d => d.priority === 'essential')
-        .reduce((sum, d) => sum + d.totalCost, 0) + 
-        budgetAllocation.excluded
-          .filter(d => d.priority === 'essential')
-          .reduce((sum, d) => sum + d.totalCost, 0),
-      budgetLimited: budgetAllocation.withinBudget
-        .filter(d => d.priority === 'essential')
-        .reduce((sum, d) => sum + d.totalCost, 0)
-    },
-    {
-      category: 'Optional Drugs',
-      fullDemand: budgetAllocation.withinBudget
-        .filter(d => d.priority === 'optional')
-        .reduce((sum, d) => sum + d.totalCost, 0) + 
-        budgetAllocation.excluded
-          .filter(d => d.priority === 'optional')
-          .reduce((sum, d) => sum + d.totalCost, 0),
-      budgetLimited: budgetAllocation.withinBudget
-        .filter(d => d.priority === 'optional')
-        .reduce((sum, d) => sum + d.totalCost, 0)
-    }
-  ];
+  // Calculate forecast accuracy
+  const calculateAccuracy = () => {
+    const dataWithActual = salesData.filter(item => item.actual !== null);
+    const accuracyByPeriod = dataWithActual.map(item => {
+      const deviation = Math.abs(item.actual! - item.predicted);
+      const accuracy = 100 - (deviation / item.actual!) * 100;
+      return {
+        month: item.month,
+        accuracy: Math.max(0, accuracy),
+        isAccurate: accuracy >= 90,
+        deviation: deviation
+      };
+    });
+    
+    const overallAccuracy = accuracyByPeriod.reduce((sum, item) => sum + item.accuracy, 0) / accuracyByPeriod.length;
+    
+    return { accuracyByPeriod, overallAccuracy };
+  };
+
+  const { accuracyByPeriod, overallAccuracy } = calculateAccuracy();
 
   return (
     <div className="space-y-6">
@@ -345,23 +339,36 @@ const ForecastingDashboard = () => {
             </div>
           </div>
 
-          {/* Budget Comparison Chart */}
+          {/* Budget Summary */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Full Demand vs Budget-Limited Forecast</CardTitle>
+              <CardTitle className="text-base">Budget Allocation Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={chartConfig} className="h-64">
-                <BarChart data={budgetComparisonData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="category" stroke="hsl(var(--muted-foreground))" />
-                  <YAxis stroke="hsl(var(--muted-foreground))" />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Legend />
-                  <Bar dataKey="fullDemand" fill="hsl(var(--accent))" name="Full Demand" radius={[8, 8, 0, 0]} />
-                  <Bar dataKey="budgetLimited" fill="hsl(var(--primary))" name="Budget Limited" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ChartContainer>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+                  <p className="text-sm text-muted-foreground mb-1">Essential Drugs</p>
+                  <p className="text-xl font-bold text-primary">
+                    {formatCurrency(budgetAllocation.withinBudget
+                      .filter(d => d.priority === 'essential')
+                      .reduce((sum, d) => sum + d.totalCost, 0))}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {budgetAllocation.withinBudget.filter(d => d.priority === 'essential').length} items
+                  </p>
+                </div>
+                <div className="p-4 bg-accent/10 rounded-lg border border-accent/20">
+                  <p className="text-sm text-muted-foreground mb-1">Optional Drugs</p>
+                  <p className="text-xl font-bold text-accent">
+                    {formatCurrency(budgetAllocation.withinBudget
+                      .filter(d => d.priority === 'optional')
+                      .reduce((sum, d) => sum + d.totalCost, 0))}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {budgetAllocation.withinBudget.filter(d => d.priority === 'optional').length} items
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -490,38 +497,94 @@ const ForecastingDashboard = () => {
                 <BarChart3 className="h-5 w-5" />
                 Actual Sales vs Predicted Demand
               </CardTitle>
+              <div className="mt-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
+                <p className="text-sm font-medium text-foreground">
+                  Overall Forecast Accuracy: <span className="text-lg font-bold text-primary">{overallAccuracy.toFixed(1)}%</span>
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Based on {accuracyByPeriod.length} months of actual vs predicted data comparison
+                </p>
+              </div>
             </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig} className="h-80">
-                <LineChart data={generateForecastData()}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="month" 
-                    tick={{ fontSize: 12 }}
-                    stroke="hsl(var(--muted-foreground))"
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 12 }}
-                    stroke="hsl(var(--muted-foreground))"
-                  />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line
-                    type="monotone"
-                    dataKey="actual"
-                    stroke="var(--color-actual)"
-                    strokeWidth={3}
-                    dot={{ fill: "var(--color-actual)", r: 4 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="predicted"
-                    stroke="var(--color-predicted)"
-                    strokeWidth={3}
-                    strokeDasharray="5 5"
-                    dot={{ fill: "var(--color-predicted)", r: 4 }}
-                  />
-                </LineChart>
-              </ChartContainer>
+            <CardContent className="space-y-6">
+              <div>
+                <ChartContainer config={chartConfig} className="h-80">
+                  <LineChart data={salesData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="month" 
+                      tick={{ fontSize: 12 }}
+                      stroke="hsl(var(--muted-foreground))"
+                      label={{ value: 'Time Period (Months)', position: 'insideBottom', offset: -5, style: { fill: 'hsl(var(--foreground))' } }}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      stroke="hsl(var(--muted-foreground))"
+                      label={{ value: 'Sales Amount ($)', angle: -90, position: 'insideLeft', style: { fill: 'hsl(var(--foreground))' } }}
+                    />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Legend 
+                      wrapperStyle={{ paddingTop: '20px' }}
+                      iconType="line"
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="actual"
+                      name="Actual Sales"
+                      stroke="var(--color-actual)"
+                      strokeWidth={3}
+                      dot={{ fill: "var(--color-actual)", r: 5 }}
+                      connectNulls={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="predicted"
+                      name="Predicted Sales"
+                      stroke="var(--color-predicted)"
+                      strokeWidth={3}
+                      strokeDasharray="5 5"
+                      dot={{ fill: "var(--color-predicted)", r: 5 }}
+                    />
+                  </LineChart>
+                </ChartContainer>
+              </div>
+
+              {/* Accuracy Breakdown by Period */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-foreground">Forecast Accuracy by Period</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {accuracyByPeriod.map((period) => (
+                    <div 
+                      key={period.month}
+                      className={`p-3 rounded-lg border ${
+                        period.isAccurate 
+                          ? 'bg-success/10 border-success/30' 
+                          : 'bg-warning/10 border-warning/30'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-foreground">{period.month}</span>
+                        {period.isAccurate ? (
+                          <CheckCircle2 className="h-4 w-4 text-success" />
+                        ) : (
+                          <AlertTriangle className="h-4 w-4 text-warning" />
+                        )}
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className={`text-lg font-bold ${period.isAccurate ? 'text-success' : 'text-warning'}`}>
+                          {period.accuracy.toFixed(1)}%
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          accuracy
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Deviation: ${period.deviation.toFixed(0)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </CardContent>
           </Card>
 
