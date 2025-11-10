@@ -14,6 +14,8 @@ import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
 } from "@/components/ui/chart";
 import {
   LineChart,
@@ -29,9 +31,11 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend
+  Legend,
+  ReferenceLine,
+  Label
 } from "recharts";
-import { TrendingUp, TrendingDown, Calendar, Package, BarChart3, Filter, DollarSign, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Calendar, Package, BarChart3, Filter, AlertCircle, CheckCircle2 } from "lucide-react";
 
 // Mock data for charts
 const salesData = [
@@ -88,8 +92,6 @@ const ForecastingDashboard = () => {
   const [selectedFactors, setSelectedFactors] = useState<string[]>([]);
   const [drugs, setDrugs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [budget, setBudget] = useState<number>(50000);
-  const [budgetPeriod, setBudgetPeriod] = useState<"weekly" | "monthly" | "quarterly">("monthly");
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
 
@@ -149,102 +151,31 @@ const ForecastingDashboard = () => {
     );
   };
 
-  // Budget forecasting logic
-  interface DrugPurchaseRecommendation {
-    name: string;
-    priority: 'essential' | 'optional';
-    estimatedDemand: number;
-    unitPrice: number;
-    totalCost: number;
-    supplierDiscount: number;
-    profitMargin: number;
-    seasonalityFactor: number;
-  }
-
-  const generatePurchaseRecommendations = (): DrugPurchaseRecommendation[] => {
-    return drugs.map(drug => {
-      const name = drug.name?.toLowerCase() || '';
-      const isEssential = name.includes('antibiotic') || name.includes('insulin') || 
-                          name.includes('aspirin') || name.includes('pain') || 
-                          name.includes('blood') || name.includes('heart');
-      
-      // Calculate estimated demand based on historical data and seasonality
-      const basePrice = drug.price_EGP || 0;
-      const seasonalMultiplier = selectedFactors.length > 0 ? 1.2 : 1.0;
-      const demandEstimate = Math.round(Math.random() * 100 + 50) * seasonalMultiplier;
-      
+  // Calculate accuracy for each month where actual data exists
+  const calculateAccuracy = () => {
+    const dataWithActuals = salesData.filter(item => item.actual !== null);
+    const accuracyData = dataWithActuals.map(item => {
+      const accuracy = item.actual && item.predicted 
+        ? (1 - Math.abs(item.actual - item.predicted) / item.actual) * 100
+        : 0;
+      const isAccurate = accuracy >= 90; // 90% or higher is considered accurate
       return {
-        name: drug.name || 'Unknown',
-        priority: isEssential ? 'essential' : 'optional',
-        estimatedDemand: demandEstimate,
-        unitPrice: basePrice,
-        totalCost: basePrice * demandEstimate,
-        supplierDiscount: Math.random() * 15, // 0-15% discount
-        profitMargin: 20 + Math.random() * 30, // 20-50% margin
-        seasonalityFactor: seasonalMultiplier
+        ...item,
+        accuracy: Math.max(0, Math.min(100, accuracy)),
+        isAccurate,
+        deviation: item.actual && item.predicted ? item.predicted - item.actual : 0
       };
     });
-  };
-
-  const calculateBudgetAllocation = () => {
-    const recommendations = generatePurchaseRecommendations();
     
-    // Sort by priority (essential first) then by demand
-    const sorted = recommendations.sort((a, b) => {
-      if (a.priority === 'essential' && b.priority !== 'essential') return -1;
-      if (a.priority !== 'essential' && b.priority === 'essential') return 1;
-      return b.estimatedDemand - a.estimatedDemand;
-    });
-
-    let remainingBudget = budget;
-    const withinBudget: DrugPurchaseRecommendation[] = [];
-    const excluded: DrugPurchaseRecommendation[] = [];
-    let essentialCovered = true;
-
-    sorted.forEach(item => {
-      const costAfterDiscount = item.totalCost * (1 - item.supplierDiscount / 100);
-      if (remainingBudget >= costAfterDiscount) {
-        withinBudget.push({ ...item, totalCost: costAfterDiscount });
-        remainingBudget -= costAfterDiscount;
-      } else {
-        excluded.push(item);
-        if (item.priority === 'essential') {
-          essentialCovered = false;
-        }
-      }
-    });
-
-    return { withinBudget, excluded, essentialCovered, remainingBudget };
+    const avgAccuracy = accuracyData.reduce((sum, item) => sum + item.accuracy, 0) / accuracyData.length;
+    
+    return {
+      data: accuracyData,
+      avgAccuracy: avgAccuracy.toFixed(1)
+    };
   };
 
-  const budgetAllocation = calculateBudgetAllocation();
-  
-  const budgetComparisonData = [
-    {
-      category: 'Essential Drugs',
-      fullDemand: budgetAllocation.withinBudget
-        .filter(d => d.priority === 'essential')
-        .reduce((sum, d) => sum + d.totalCost, 0) + 
-        budgetAllocation.excluded
-          .filter(d => d.priority === 'essential')
-          .reduce((sum, d) => sum + d.totalCost, 0),
-      budgetLimited: budgetAllocation.withinBudget
-        .filter(d => d.priority === 'essential')
-        .reduce((sum, d) => sum + d.totalCost, 0)
-    },
-    {
-      category: 'Optional Drugs',
-      fullDemand: budgetAllocation.withinBudget
-        .filter(d => d.priority === 'optional')
-        .reduce((sum, d) => sum + d.totalCost, 0) + 
-        budgetAllocation.excluded
-          .filter(d => d.priority === 'optional')
-          .reduce((sum, d) => sum + d.totalCost, 0),
-      budgetLimited: budgetAllocation.withinBudget
-        .filter(d => d.priority === 'optional')
-        .reduce((sum, d) => sum + d.totalCost, 0)
-    }
-  ];
+  const accuracyResults = calculateAccuracy();
 
   return (
     <div className="space-y-6">
@@ -257,150 +188,6 @@ const ForecastingDashboard = () => {
           AI-powered insights for inventory planning and demand prediction
         </p>
       </div>
-
-      {/* Budget Forecasting Section */}
-      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-primary" />
-            Budget Forecasting
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Budget Input */}
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Budget Period
-                </label>
-                <Select value={budgetPeriod} onValueChange={(value: any) => setBudgetPeriod(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="weekly">Weekly</SelectItem>
-                    <SelectItem value="monthly">Monthly</SelectItem>
-                    <SelectItem value="quarterly">Quarterly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Available Budget: {formatCurrency(budget)}
-                </label>
-                <Input 
-                  type="number" 
-                  value={budget}
-                  onChange={(e) => setBudget(Number(e.target.value))}
-                  className="mb-3"
-                  min={0}
-                  step={1000}
-                />
-                <Slider 
-                  value={[budget]}
-                  onValueChange={([value]) => setBudget(value)}
-                  min={10000}
-                  max={200000}
-                  step={5000}
-                  className="w-full"
-                />
-              </div>
-            </div>
-
-            {/* Budget Status */}
-            <div className="space-y-4">
-              <div className="p-4 bg-background rounded-lg border">
-                <p className="text-sm text-muted-foreground mb-1">Total Allocated</p>
-                <p className="text-2xl font-bold text-primary">
-                  {formatCurrency(budget - budgetAllocation.remainingBudget)}
-                </p>
-              </div>
-              
-              <div className="p-4 bg-background rounded-lg border">
-                <p className="text-sm text-muted-foreground mb-1">Remaining Budget</p>
-                <p className="text-2xl font-bold text-success">
-                  {formatCurrency(budgetAllocation.remainingBudget)}
-                </p>
-              </div>
-
-              {!budgetAllocation.essentialCovered && (
-                <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    Budget insufficient to cover all essential drugs. Consider increasing budget or adjusting priorities.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {budgetAllocation.essentialCovered && (
-                <Alert className="border-success/50 text-success">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <AlertDescription>
-                    All essential drugs covered within budget.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          </div>
-
-          {/* Budget Comparison Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Full Demand vs Budget-Limited Forecast</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig} className="h-64">
-                <BarChart data={budgetComparisonData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="category" stroke="hsl(var(--muted-foreground))" />
-                  <YAxis stroke="hsl(var(--muted-foreground))" />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Legend />
-                  <Bar dataKey="fullDemand" fill="hsl(var(--accent))" name="Full Demand" radius={[8, 8, 0, 0]} />
-                  <Bar dataKey="budgetLimited" fill="hsl(var(--primary))" name="Budget Limited" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-
-          {/* Recommended Purchase List */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Recommended Purchase List (Within Budget)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {budgetAllocation.withinBudget.slice(0, 10).map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Badge variant={item.priority === 'essential' ? 'default' : 'secondary'}>
-                        {item.priority}
-                      </Badge>
-                      <div>
-                        <p className="font-medium text-foreground">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Est. Demand: {item.estimatedDemand} units • {item.supplierDiscount.toFixed(1)}% discount
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-foreground">{formatCurrency(item.totalCost)}</p>
-                      <p className="text-xs text-muted-foreground">{item.profitMargin.toFixed(0)}% margin</p>
-                    </div>
-                  </div>
-                ))}
-                {budgetAllocation.withinBudget.length > 10 && (
-                  <p className="text-sm text-muted-foreground text-center pt-2">
-                    +{budgetAllocation.withinBudget.length - 10} more items...
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </CardContent>
-      </Card>
 
       {/* Filters */}
       <Card>
@@ -484,44 +271,113 @@ const ForecastingDashboard = () => {
         </TabsList>
 
         <TabsContent value="demand" className="space-y-6">
+          {/* Accuracy Overview Alert */}
+          <Alert className="border-primary/50 bg-primary/5">
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+            <AlertDescription className="text-foreground">
+              <span className="font-semibold">Overall Forecast Accuracy: {accuracyResults.avgAccuracy}%</span>
+              {' '}- The predictions are highly accurate with an average deviation of {(100 - parseFloat(accuracyResults.avgAccuracy)).toFixed(1)}%.
+              {' '}Accurate predictions (≥90%) are highlighted below.
+            </AlertDescription>
+          </Alert>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5" />
-                Actual Sales vs Predicted Demand
+                Sales Forecast Comparison
               </CardTitle>
+              <p className="text-sm text-muted-foreground mt-2">
+                Comparing actual sales (solid line) against predicted demand (dashed line) over time
+              </p>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={chartConfig} className="h-80">
-                <LineChart data={generateForecastData()}>
+              <ChartContainer config={chartConfig} className="h-96">
+                <LineChart data={salesData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis 
                     dataKey="month" 
                     tick={{ fontSize: 12 }}
                     stroke="hsl(var(--muted-foreground))"
-                  />
+                  >
+                    <Label value="Time Period (Months)" offset={-5} position="insideBottom" style={{ fill: 'hsl(var(--foreground))' }} />
+                  </XAxis>
                   <YAxis 
                     tick={{ fontSize: 12 }}
                     stroke="hsl(var(--muted-foreground))"
-                  />
+                  >
+                    <Label value="Sales Amount ($)" angle={-90} position="insideLeft" style={{ fill: 'hsl(var(--foreground))', textAnchor: 'middle' }} />
+                  </YAxis>
                   <ChartTooltip content={<ChartTooltipContent />} />
+                  <ChartLegend content={<ChartLegendContent />} />
                   <Line
+                    name="Actual Sales"
                     type="monotone"
                     dataKey="actual"
                     stroke="var(--color-actual)"
                     strokeWidth={3}
-                    dot={{ fill: "var(--color-actual)", r: 4 }}
+                    dot={{ fill: "var(--color-actual)", r: 5 }}
+                    connectNulls={false}
                   />
                   <Line
+                    name="Predicted Sales"
                     type="monotone"
                     dataKey="predicted"
                     stroke="var(--color-predicted)"
                     strokeWidth={3}
                     strokeDasharray="5 5"
-                    dot={{ fill: "var(--color-predicted)", r: 4 }}
+                    dot={{ fill: "var(--color-predicted)", r: 5 }}
                   />
                 </LineChart>
               </ChartContainer>
+            </CardContent>
+          </Card>
+
+          {/* Detailed Accuracy Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Prediction Accuracy Analysis</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Detailed breakdown of forecast accuracy for each period with actual data
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {accuracyResults.data.map((item, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`flex items-center justify-between p-4 rounded-lg border ${
+                      item.isAccurate 
+                        ? 'bg-success/5 border-success/30' 
+                        : 'bg-warning/5 border-warning/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {item.isAccurate ? (
+                        <CheckCircle2 className="h-5 w-5 text-success" />
+                      ) : (
+                        <AlertCircle className="h-5 w-5 text-warning" />
+                      )}
+                      <div>
+                        <p className="font-medium text-foreground">{item.month}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Actual: ${item.actual?.toLocaleString()} | Predicted: ${item.predicted?.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-lg font-bold ${
+                        item.isAccurate ? 'text-success' : 'text-warning'
+                      }`}>
+                        {item.accuracy.toFixed(1)}%
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.deviation > 0 ? 'Over' : 'Under'} by ${Math.abs(item.deviation).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
@@ -531,8 +387,8 @@ const ForecastingDashboard = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Forecast Accuracy</p>
-                    <p className="text-2xl font-bold text-success">94.2%</p>
+                    <p className="text-sm text-muted-foreground">Average Accuracy</p>
+                    <p className="text-2xl font-bold text-success">{accuracyResults.avgAccuracy}%</p>
                   </div>
                   <TrendingUp className="h-8 w-8 text-success" />
                 </div>
