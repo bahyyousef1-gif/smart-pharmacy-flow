@@ -84,7 +84,6 @@ const chartConfig = {
 
 const ForecastingDashboard = () => {
   const [selectedProduct, setSelectedProduct] = useState("all");
-  const [timeRange, setTimeRange] = useState("12m");
   const [selectedFactors, setSelectedFactors] = useState<string[]>([]);
   const [drugs, setDrugs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -418,7 +417,7 @@ const ForecastingDashboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">
                 Product Category
@@ -434,23 +433,6 @@ const ForecastingDashboard = () => {
                       {category}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">
-                Time Range
-              </label>
-              <Select value={timeRange} onValueChange={setTimeRange}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="3m">3 Months</SelectItem>
-                  <SelectItem value="6m">6 Months</SelectItem>
-                  <SelectItem value="12m">12 Months</SelectItem>
-                  <SelectItem value="24m">24 Months</SelectItem>
                 </SelectContent>
               </Select>
             </div>
