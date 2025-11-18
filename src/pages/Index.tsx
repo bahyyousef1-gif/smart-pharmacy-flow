@@ -4,6 +4,7 @@ import Header from "@/components/Layout/Header";
 import Sidebar from "@/components/Navigation/Sidebar";
 import MetricCards from "@/components/Dashboard/MetricCards";
 import InventoryGrid from "@/components/Inventory/InventoryGrid";
+import InventoryUpload from "@/components/Inventory/InventoryUpload";
 import SmartOrdering from "@/components/Orders/SmartOrdering";
 import InsuranceModule from "@/components/Insurance/InsuranceModule";
 import P2POrderingModule from "@/components/P2P/P2POrderingModule";
@@ -74,6 +75,9 @@ const DashboardView = () => (
     </div>
     
     <MetricCards />
+    
+    {/* Inventory Upload */}
+    <InventoryUpload />
     
     {/* Drugs Database */}
     <DrugsTable />

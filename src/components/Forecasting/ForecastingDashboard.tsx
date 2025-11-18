@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import InventoryUpload from "@/components/Inventory/InventoryUpload";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -250,6 +251,9 @@ const ForecastingDashboard = () => {
           AI-powered insights for inventory planning and demand prediction
         </p>
       </div>
+
+      {/* Inventory Upload Section */}
+      <InventoryUpload />
 
       {/* Budget Forecasting Section */}
       <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
