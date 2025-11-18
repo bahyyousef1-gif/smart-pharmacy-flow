@@ -90,12 +90,43 @@ const ForecastingDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [budget, setBudget] = useState<number>(50000);
   const [budgetPeriod, setBudgetPeriod] = useState<"weekly" | "monthly" | "quarterly">("monthly");
+  const [forecast, setForecast] = useState<string>("");
+  const [generatingForecast, setGeneratingForecast] = useState(false);
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
 
   useEffect(() => {
     fetchDrugs();
   }, []);
+
+  const generateForecast = async () => {
+    try {
+      setGeneratingForecast(true);
+      toast({
+        title: "Generating Forecast",
+        description: "AI is analyzing your pharmacy data...",
+      });
+
+      const { data, error } = await supabase.functions.invoke('generate-forecast');
+
+      if (error) throw error;
+
+      setForecast(data.forecast);
+      toast({
+        title: "Forecast Generated",
+        description: `Analyzed ${data.dataAnalyzed} inventory items`,
+      });
+    } catch (error) {
+      console.error('Error generating forecast:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate forecast. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingForecast(false);
+    }
+  };
 
   const fetchDrugs = async () => {
     try {
@@ -243,17 +274,47 @@ const ForecastingDashboard = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">
-          Demand Forecasting & Analytics
-        </h1>
-        <p className="text-muted-foreground">
-          AI-powered insights for inventory planning and demand prediction
-        </p>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Demand Forecasting & Analytics
+          </h1>
+          <p className="text-muted-foreground">
+            AI-powered insights for inventory planning and demand prediction
+          </p>
+        </div>
+        <Button 
+          onClick={generateForecast} 
+          disabled={generatingForecast || drugs.length === 0}
+          size="lg"
+          className="gap-2"
+        >
+          {generatingForecast ? "Analyzing..." : "Generate AI Forecast"}
+          <BarChart3 className="h-4 w-4" />
+        </Button>
       </div>
 
       {/* Inventory Upload Section */}
       <InventoryUpload />
+
+      {/* AI Forecast Results */}
+      {forecast && (
+        <Card className="mb-4 border-success/20 bg-gradient-to-br from-success/5 to-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-success" />
+              AI Forecast Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="prose prose-sm max-w-none">
+              <pre className="whitespace-pre-wrap text-sm text-foreground bg-background/50 p-4 rounded-lg border">
+                {forecast}
+              </pre>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Budget Forecasting Section */}
       <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
