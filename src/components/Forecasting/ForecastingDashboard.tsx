@@ -31,7 +31,7 @@ import {
   Cell,
   Legend
 } from "recharts";
-import { TrendingUp, TrendingDown, Calendar, Package, BarChart3, Filter, DollarSign, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Calendar, Package, BarChart3, Filter, DollarSign, AlertTriangle, CheckCircle2, Upload } from "lucide-react";
 
 // Mock data for charts
 const salesData = [
@@ -89,6 +89,7 @@ const ForecastingDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [budget, setBudget] = useState<number>(50000);
   const [budgetPeriod, setBudgetPeriod] = useState<"weekly" | "monthly" | "quarterly">("monthly");
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
 
