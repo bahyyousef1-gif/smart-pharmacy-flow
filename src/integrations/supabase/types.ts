@@ -38,6 +38,78 @@ export type Database = {
         }
         Relationships: []
       }
+      forecast_results: {
+        Row: {
+          accuracy_score: number | null
+          confidence_high: number
+          confidence_low: number
+          created_at: string
+          drug_name: string
+          forecast_horizon_days: number
+          id: string
+          predicted_demand: number
+          reorder_point: number | null
+          suggested_order_qty: number | null
+          trend: string
+        }
+        Insert: {
+          accuracy_score?: number | null
+          confidence_high: number
+          confidence_low: number
+          created_at?: string
+          drug_name: string
+          forecast_horizon_days?: number
+          id?: string
+          predicted_demand: number
+          reorder_point?: number | null
+          suggested_order_qty?: number | null
+          trend: string
+        }
+        Update: {
+          accuracy_score?: number | null
+          confidence_high?: number
+          confidence_low?: number
+          created_at?: string
+          drug_name?: string
+          forecast_horizon_days?: number
+          id?: string
+          predicted_demand?: number
+          reorder_point?: number | null
+          suggested_order_qty?: number | null
+          trend?: string
+        }
+        Relationships: []
+      }
+      sales_history: {
+        Row: {
+          created_at: string
+          drug_name: string
+          id: string
+          quantity_sold: number
+          sale_date: string
+          total_revenue: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          drug_name: string
+          id?: string
+          quantity_sold: number
+          sale_date: string
+          total_revenue: number
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          drug_name?: string
+          id?: string
+          quantity_sold?: number
+          sale_date?: string
+          total_revenue?: number
+          unit_price?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
