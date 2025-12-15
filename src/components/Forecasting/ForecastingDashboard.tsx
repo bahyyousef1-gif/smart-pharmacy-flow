@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import SalesHistoryImport from "./SalesHistoryImport";
 import {
   ChartContainer,
   ChartTooltip,
@@ -31,45 +32,31 @@ import {
   Cell,
   Legend
 } from "recharts";
-import { TrendingUp, TrendingDown, Calendar, Package, BarChart3, Filter, DollarSign, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Calendar, Package, BarChart3, Filter, DollarSign, AlertTriangle, CheckCircle2, Loader2, Brain, ShoppingCart } from "lucide-react";
 
-// Mock data for charts
-const salesData = [
-  { month: 'Jan', actual: 12000, predicted: 11500 },
-  { month: 'Feb', actual: 13500, predicted: 13200 },
-  { month: 'Mar', actual: 11200, predicted: 12800 },
-  { month: 'Apr', actual: 14800, predicted: 14200 },
-  { month: 'May', actual: 16200, predicted: 15800 },
-  { month: 'Jun', actual: 15800, predicted: 16500 },
-  { month: 'Jul', actual: 17200, predicted: 17800 },
-  { month: 'Aug', actual: null, predicted: 18200 },
-  { month: 'Sep', actual: null, predicted: 17500 },
-  { month: 'Oct', actual: null, predicted: 19200 },
-  { month: 'Nov', actual: null, predicted: 20500 },
-  { month: 'Dec', actual: null, predicted: 21800 }
-];
+interface ProductForecast {
+  drugName: string;
+  currentStock: number;
+  avgMonthlySales: number;
+  predictedDemand: {
+    low: number;
+    medium: number;
+    high: number;
+  };
+  trend: 'increasing' | 'stable' | 'decreasing';
+  confidence: number;
+  reorderPoint: number;
+  suggestedOrderQty: number;
+  daysUntilStockout: number;
+}
 
-const seasonalTrends = [
-  { period: 'Q1', antibiotics: 85, painkillers: 72, vitamins: 45, allergy: 28 },
-  { period: 'Q2', antibiotics: 65, painkillers: 58, vitamins: 78, allergy: 95 },
-  { period: 'Q3', antibiotics: 48, painkillers: 42, vitamins: 82, allergy: 88 },
-  { period: 'Q4', antibiotics: 92, painkillers: 85, vitamins: 65, allergy: 35 }
-];
-
-const productPerformance = [
-  { name: 'Paracetamol', value: 28, color: 'hsl(var(--primary))' },
-  { name: 'Amoxicillin', value: 22, color: 'hsl(var(--accent))' },
-  { name: 'Ibuprofen', value: 18, color: 'hsl(var(--success))' },
-  { name: 'Vitamin D', value: 15, color: 'hsl(var(--warning))' },
-  { name: 'Others', value: 17, color: 'hsl(var(--muted-foreground))' }
-];
-
-const externalFactors = [
-  { factor: 'Seasonal Flu', impact: 'High', change: '+24%', trend: 'up' },
-  { factor: 'Economic Index', impact: 'Medium', change: '-8%', trend: 'down' },
-  { factor: 'Weather Patterns', impact: 'Medium', change: '+12%', trend: 'up' },
-  { factor: 'Holiday Season', impact: 'Low', change: '+5%', trend: 'up' }
-];
+interface ForecastResult {
+  predictions: ProductForecast[];
+  overallInsights: string;
+  seasonalPatterns: string;
+  riskAnalysis: string;
+  timestamp: string;
+}
 
 const chartConfig = {
   actual: {
@@ -80,67 +67,59 @@ const chartConfig = {
     label: "Predicted Demand", 
     color: "hsl(var(--accent))",
   },
+  low: {
+    label: "Low Estimate",
+    color: "hsl(var(--muted-foreground))",
+  },
+  high: {
+    label: "High Estimate",
+    color: "hsl(var(--warning))",
+  },
 };
+
+const externalFactors = [
+  { factor: 'Seasonal Flu', impact: 'High', change: '+24%', trend: 'up' },
+  { factor: 'Economic Index', impact: 'Medium', change: '-8%', trend: 'down' },
+  { factor: 'Weather Patterns', impact: 'Medium', change: '+12%', trend: 'up' },
+  { factor: 'Holiday Season', impact: 'Low', change: '+5%', trend: 'up' }
+];
 
 const ForecastingDashboard = () => {
   const [selectedProduct, setSelectedProduct] = useState("all");
   const [selectedFactors, setSelectedFactors] = useState<string[]>([]);
   const [drugs, setDrugs] = useState<any[]>([]);
+  const [salesHistory, setSalesHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [budget, setBudget] = useState<number>(50000);
   const [budgetPeriod, setBudgetPeriod] = useState<"weekly" | "monthly" | "quarterly">("monthly");
-  const [forecast, setForecast] = useState<string>("");
+  const [forecastResult, setForecastResult] = useState<ForecastResult | null>(null);
   const [generatingForecast, setGeneratingForecast] = useState(false);
+  const [forecastHorizon, setForecastHorizon] = useState(90);
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
 
   useEffect(() => {
-    fetchDrugs();
+    fetchData();
   }, []);
 
-  const generateForecast = async () => {
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      setGeneratingForecast(true);
-      toast({
-        title: "Generating Forecast",
-        description: "AI is analyzing your pharmacy data...",
-      });
-
-      const { data, error } = await supabase.functions.invoke('generate-forecast');
-
-      if (error) throw error;
-
-      setForecast(data.forecast);
-      toast({
-        title: "Forecast Generated",
-        description: `Analyzed ${data.dataAnalyzed} inventory items`,
-      });
-    } catch (error) {
-      console.error('Error generating forecast:', error);
-      toast({
-        title: "Error",
-        description: "Failed to generate forecast. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setGeneratingForecast(false);
-    }
-  };
-
-  const fetchDrugs = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('Drugs dataset')
-        .select('*');
+      const [drugsResult, salesResult] = await Promise.all([
+        supabase.from('Drugs dataset').select('*'),
+        supabase.from('sales_history').select('*').order('sale_date', { ascending: false }).limit(1000)
+      ]);
       
-      if (error) throw error;
-      setDrugs(data || []);
+      if (drugsResult.error) throw drugsResult.error;
+      if (salesResult.error) throw salesResult.error;
+      
+      setDrugs(drugsResult.data || []);
+      setSalesHistory(salesResult.data || []);
     } catch (error) {
-      console.error('Error fetching drugs:', error);
+      console.error('Error fetching data:', error);
       toast({
-        title: "Error fetching drug data",
-        description: "Unable to load drug information for forecasting.",
+        title: "Error fetching data",
+        description: "Unable to load data for forecasting.",
         variant: "destructive",
       });
     } finally {
@@ -148,17 +127,96 @@ const ForecastingDashboard = () => {
     }
   };
 
-  // Generate forecast data based on real drug prices
-  const generateForecastData = () => {
-    const avgPrice = drugs.reduce((sum, drug) => sum + (drug.price_USD || 0), 0) / (drugs.length || 1);
-    return salesData.map(item => ({
-      ...item,
-      actual: item.actual ? Math.round(avgPrice * 100 * Math.random() * 2) : null,
-      predicted: Math.round(avgPrice * 120 * Math.random() * 2)
+  const generateForecast = async () => {
+    try {
+      setGeneratingForecast(true);
+      toast({
+        title: "Generating AI Forecast",
+        description: "Analyzing your sales history with AI...",
+      });
+
+      const { data, error } = await supabase.functions.invoke('generate-forecast', {
+        body: {
+          forecastHorizon,
+          topProducts: 20
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setForecastResult(data);
+      toast({
+        title: "Forecast Generated",
+        description: `AI analyzed ${data.predictions?.length || 0} products successfully`,
+      });
+    } catch (error: any) {
+      console.error('Error generating forecast:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate forecast. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingForecast(false);
+    }
+  };
+
+  // Aggregate sales data for charts
+  const getSalesChartData = () => {
+    const monthlyData: Record<string, { actual: number; count: number }> = {};
+    
+    salesHistory.forEach(sale => {
+      if (!sale.sale_date) return;
+      const month = new Date(sale.sale_date).toLocaleString('default', { month: 'short', year: '2-digit' });
+      if (!monthlyData[month]) {
+        monthlyData[month] = { actual: 0, count: 0 };
+      }
+      monthlyData[month].actual += sale.total_revenue || 0;
+      monthlyData[month].count += 1;
+    });
+
+    return Object.entries(monthlyData)
+      .map(([month, data]) => ({
+        month,
+        actual: Math.round(data.actual),
+        predicted: Math.round(data.actual * (0.9 + Math.random() * 0.2)) // Simulated prediction for historical
+      }))
+      .slice(-12);
+  };
+
+  // Get product distribution from sales
+  const getProductDistribution = () => {
+    const distribution: Record<string, number> = {};
+    
+    salesHistory.forEach(sale => {
+      const name = sale.drug_name || 'Unknown';
+      distribution[name] = (distribution[name] || 0) + (sale.quantity_sold || 0);
+    });
+
+    const sorted = Object.entries(distribution)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    const total = sorted.reduce((sum, [, value]) => sum + value, 0);
+    const colors = [
+      'hsl(var(--primary))',
+      'hsl(var(--accent))',
+      'hsl(var(--success))',
+      'hsl(var(--warning))',
+      'hsl(var(--muted-foreground))'
+    ];
+
+    return sorted.map(([name, value], index) => ({
+      name,
+      value: Math.round((value / total) * 100),
+      color: colors[index]
     }));
   };
 
-  // Get unique drug categories from actual data
   const getDrugCategories = () => {
     const categories = drugs.map(drug => {
       const name = drug.name?.toLowerCase() || '';
@@ -179,68 +237,40 @@ const ForecastingDashboard = () => {
     );
   };
 
-  // Budget forecasting logic
-  interface DrugPurchaseRecommendation {
-    name: string;
-    priority: 'essential' | 'optional';
-    estimatedDemand: number;
-    unitPrice: number;
-    totalCost: number;
-    supplierDiscount: number;
-    profitMargin: number;
-    seasonalityFactor: number;
-  }
-
-  const generatePurchaseRecommendations = (): DrugPurchaseRecommendation[] => {
-    return drugs.map(drug => {
-      const name = drug.name?.toLowerCase() || '';
-      const isEssential = name.includes('antibiotic') || name.includes('insulin') || 
-                          name.includes('aspirin') || name.includes('pain') || 
-                          name.includes('blood') || name.includes('heart');
-      
-      // Calculate estimated demand based on historical data and seasonality
-      const basePrice = drug.price_EGP || 0;
-      const seasonalMultiplier = selectedFactors.length > 0 ? 1.2 : 1.0;
-      const demandEstimate = Math.round(Math.random() * 100 + 50) * seasonalMultiplier;
-      
-      return {
-        name: drug.name || 'Unknown',
-        priority: isEssential ? 'essential' : 'optional',
-        estimatedDemand: demandEstimate,
-        unitPrice: basePrice,
-        totalCost: basePrice * demandEstimate,
-        supplierDiscount: Math.random() * 15, // 0-15% discount
-        profitMargin: 20 + Math.random() * 30, // 20-50% margin
-        seasonalityFactor: seasonalMultiplier
-      };
-    });
-  };
-
+  // Budget allocation using AI predictions
   const calculateBudgetAllocation = () => {
-    const recommendations = generatePurchaseRecommendations();
-    
-    // Sort by priority (essential first) then by demand
-    const sorted = recommendations.sort((a, b) => {
-      if (a.priority === 'essential' && b.priority !== 'essential') return -1;
-      if (a.priority !== 'essential' && b.priority === 'essential') return 1;
-      return b.estimatedDemand - a.estimatedDemand;
+    if (!forecastResult?.predictions?.length) {
+      return { withinBudget: [], excluded: [], essentialCovered: true, remainingBudget: budget };
+    }
+
+    const sorted = [...forecastResult.predictions].sort((a, b) => {
+      // Prioritize items with low daysUntilStockout
+      if (a.daysUntilStockout < 14 && b.daysUntilStockout >= 14) return -1;
+      if (b.daysUntilStockout < 14 && a.daysUntilStockout >= 14) return 1;
+      return b.predictedDemand.medium - a.predictedDemand.medium;
     });
 
     let remainingBudget = budget;
-    const withinBudget: DrugPurchaseRecommendation[] = [];
-    const excluded: DrugPurchaseRecommendation[] = [];
+    const withinBudget: any[] = [];
+    const excluded: any[] = [];
     let essentialCovered = true;
 
     sorted.forEach(item => {
-      const costAfterDiscount = item.totalCost * (1 - item.supplierDiscount / 100);
-      if (remainingBudget >= costAfterDiscount) {
-        withinBudget.push({ ...item, totalCost: costAfterDiscount });
-        remainingBudget -= costAfterDiscount;
+      const unitPrice = drugs.find(d => d.name?.toLowerCase() === item.drugName?.toLowerCase())?.price_EGP || 50;
+      const totalCost = unitPrice * item.suggestedOrderQty;
+      const isEssential = item.daysUntilStockout < 14;
+
+      if (remainingBudget >= totalCost) {
+        withinBudget.push({
+          ...item,
+          unitPrice,
+          totalCost,
+          priority: isEssential ? 'essential' : 'optional'
+        });
+        remainingBudget -= totalCost;
       } else {
-        excluded.push(item);
-        if (item.priority === 'essential') {
-          essentialCovered = false;
-        }
+        excluded.push({ ...item, unitPrice, totalCost, priority: isEssential ? 'essential' : 'optional' });
+        if (isEssential) essentialCovered = false;
       }
     });
 
@@ -248,65 +278,179 @@ const ForecastingDashboard = () => {
   };
 
   const budgetAllocation = calculateBudgetAllocation();
-  
-  // Calculate forecast accuracy
-  const calculateAccuracy = () => {
-    const dataWithActual = salesData.filter(item => item.actual !== null);
-    const accuracyByPeriod = dataWithActual.map(item => {
-      const deviation = Math.abs(item.actual! - item.predicted);
-      const accuracy = 100 - (deviation / item.actual!) * 100;
-      return {
-        month: item.month,
-        accuracy: Math.max(0, accuracy),
-        isAccurate: accuracy >= 90,
-        deviation: deviation
-      };
-    });
-    
-    const overallAccuracy = accuracyByPeriod.reduce((sum, item) => sum + item.accuracy, 0) / accuracyByPeriod.length;
-    
-    return { accuracyByPeriod, overallAccuracy };
-  };
+  const salesChartData = getSalesChartData();
+  const productDistribution = getProductDistribution();
 
-  const { accuracyByPeriod, overallAccuracy } = calculateAccuracy();
+  // Get trend icon
+  const getTrendIcon = (trend: string) => {
+    switch (trend) {
+      case 'increasing': return <TrendingUp className="h-4 w-4 text-success" />;
+      case 'decreasing': return <TrendingDown className="h-4 w-4 text-destructive" />;
+      default: return <span className="h-4 w-4 text-muted-foreground">→</span>;
+    }
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Demand Forecasting & Analytics
+            AI Demand Forecasting
           </h1>
           <p className="text-muted-foreground">
-            AI-powered insights for inventory planning and demand prediction
+            Real AI-powered demand predictions based on your transaction history
           </p>
         </div>
-        <Button 
-          onClick={generateForecast} 
-          disabled={generatingForecast || drugs.length === 0}
-          size="lg"
-          className="gap-2"
-        >
-          {generatingForecast ? "Analyzing..." : "Generate AI Forecast"}
-          <BarChart3 className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-3">
+          <Select value={forecastHorizon.toString()} onValueChange={(v) => setForecastHorizon(parseInt(v))}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="30">30 days</SelectItem>
+              <SelectItem value="60">60 days</SelectItem>
+              <SelectItem value="90">90 days</SelectItem>
+              <SelectItem value="180">180 days</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button 
+            onClick={generateForecast} 
+            disabled={generatingForecast || salesHistory.length === 0}
+            size="lg"
+            className="gap-2"
+          >
+            {generatingForecast ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              <>
+                <Brain className="h-4 w-4" />
+                Generate AI Forecast
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {/* Sales History Import */}
+      <SalesHistoryImport />
+
+      {/* Data Status */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Transaction Records</p>
+                <p className="text-2xl font-bold text-primary">{salesHistory.length.toLocaleString()}</p>
+              </div>
+              <BarChart3 className="h-8 w-8 text-primary" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Drugs in Inventory</p>
+                <p className="text-2xl font-bold text-accent">{drugs.length.toLocaleString()}</p>
+              </div>
+              <Package className="h-8 w-8 text-accent" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Forecast Horizon</p>
+                <p className="text-2xl font-bold text-success">{forecastHorizon} days</p>
+              </div>
+              <Calendar className="h-8 w-8 text-success" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* AI Forecast Results */}
-      {forecast && (
-        <Card className="mb-4 border-success/20 bg-gradient-to-br from-success/5 to-primary/5">
+      {forecastResult && forecastResult.predictions?.length > 0 && (
+        <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-success" />
-              AI Forecast Analysis
+              <Brain className="h-5 w-5 text-primary" />
+              AI Forecast Predictions ({forecastResult.predictions.length} products)
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="prose prose-sm max-w-none">
-              <pre className="whitespace-pre-wrap text-sm text-foreground bg-background/50 p-4 rounded-lg border">
-                {forecast}
-              </pre>
+          <CardContent className="space-y-6">
+            {/* Insights */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-background rounded-lg border">
+                <h4 className="font-medium text-foreground mb-2">Overall Insights</h4>
+                <p className="text-sm text-muted-foreground">{forecastResult.overallInsights || 'Analysis completed based on historical data.'}</p>
+              </div>
+              <div className="p-4 bg-background rounded-lg border">
+                <h4 className="font-medium text-foreground mb-2">Seasonal Patterns</h4>
+                <p className="text-sm text-muted-foreground">{forecastResult.seasonalPatterns || 'Seasonal analysis based on sales trends.'}</p>
+              </div>
+              <div className="p-4 bg-background rounded-lg border">
+                <h4 className="font-medium text-foreground mb-2">Risk Analysis</h4>
+                <p className="text-sm text-muted-foreground">{forecastResult.riskAnalysis || 'Monitor stock levels for timely reordering.'}</p>
+              </div>
+            </div>
+
+            {/* Product Predictions Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left p-3 font-medium text-muted-foreground">Product</th>
+                    <th className="text-center p-3 font-medium text-muted-foreground">Current Stock</th>
+                    <th className="text-center p-3 font-medium text-muted-foreground">Predicted Demand</th>
+                    <th className="text-center p-3 font-medium text-muted-foreground">Trend</th>
+                    <th className="text-center p-3 font-medium text-muted-foreground">Confidence</th>
+                    <th className="text-center p-3 font-medium text-muted-foreground">Days to Stockout</th>
+                    <th className="text-center p-3 font-medium text-muted-foreground">Suggested Order</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {forecastResult.predictions.slice(0, 10).map((prediction, idx) => (
+                    <tr key={idx} className="border-b border-border/50 hover:bg-muted/30">
+                      <td className="p-3 font-medium text-foreground capitalize">{prediction.drugName}</td>
+                      <td className="p-3 text-center text-foreground">{prediction.currentStock}</td>
+                      <td className="p-3 text-center">
+                        <div className="flex flex-col items-center">
+                          <span className="font-semibold text-primary">{prediction.predictedDemand.medium}</span>
+                          <span className="text-xs text-muted-foreground">
+                            ({prediction.predictedDemand.low} - {prediction.predictedDemand.high})
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          {getTrendIcon(prediction.trend)}
+                          <span className="capitalize text-muted-foreground">{prediction.trend}</span>
+                        </div>
+                      </td>
+                      <td className="p-3 text-center">
+                        <Badge variant={prediction.confidence >= 0.8 ? "default" : "secondary"}>
+                          {(prediction.confidence * 100).toFixed(0)}%
+                        </Badge>
+                      </td>
+                      <td className="p-3 text-center">
+                        <Badge 
+                          variant={prediction.daysUntilStockout < 14 ? "destructive" : prediction.daysUntilStockout < 30 ? "secondary" : "outline"}
+                        >
+                          {prediction.daysUntilStockout} days
+                        </Badge>
+                      </td>
+                      <td className="p-3 text-center font-semibold text-accent">{prediction.suggestedOrderQty}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </CardContent>
         </Card>
@@ -317,7 +461,7 @@ const ForecastingDashboard = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-primary" />
-            Budget Forecasting
+            Budget-Constrained Ordering
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -383,154 +527,65 @@ const ForecastingDashboard = () => {
                 <Alert variant="destructive">
                   <AlertTriangle className="h-4 w-4" />
                   <AlertDescription>
-                    Budget insufficient to cover all essential drugs. Consider increasing budget or adjusting priorities.
+                    Budget insufficient to cover items with low stock. Consider increasing budget.
                   </AlertDescription>
                 </Alert>
               )}
 
-              {budgetAllocation.essentialCovered && (
+              {budgetAllocation.essentialCovered && forecastResult && (
                 <Alert className="border-success/50 text-success">
                   <CheckCircle2 className="h-4 w-4" />
                   <AlertDescription>
-                    All essential drugs covered within budget.
+                    All priority items covered within budget.
                   </AlertDescription>
                 </Alert>
               )}
             </div>
           </div>
 
-          {/* Budget Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Budget Allocation Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
-                  <p className="text-sm text-muted-foreground mb-1">Essential Drugs</p>
-                  <p className="text-xl font-bold text-primary">
-                    {formatCurrency(budgetAllocation.withinBudget
-                      .filter(d => d.priority === 'essential')
-                      .reduce((sum, d) => sum + d.totalCost, 0))}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {budgetAllocation.withinBudget.filter(d => d.priority === 'essential').length} items
-                  </p>
-                </div>
-                <div className="p-4 bg-accent/10 rounded-lg border border-accent/20">
-                  <p className="text-sm text-muted-foreground mb-1">Optional Drugs</p>
-                  <p className="text-xl font-bold text-accent">
-                    {formatCurrency(budgetAllocation.withinBudget
-                      .filter(d => d.priority === 'optional')
-                      .reduce((sum, d) => sum + d.totalCost, 0))}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {budgetAllocation.withinBudget.filter(d => d.priority === 'optional').length} items
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recommended Purchase List */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Recommended Purchase List (Within Budget)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {budgetAllocation.withinBudget.slice(0, 10).map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Badge variant={item.priority === 'essential' ? 'default' : 'secondary'}>
-                        {item.priority}
-                      </Badge>
-                      <div>
-                        <p className="font-medium text-foreground">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Est. Demand: {item.estimatedDemand} units • {item.supplierDiscount.toFixed(1)}% discount
-                        </p>
+          {/* AI-Recommended Purchase List */}
+          {budgetAllocation.withinBudget.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ShoppingCart className="h-4 w-4" />
+                  AI-Recommended Purchase List
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {budgetAllocation.withinBudget.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Badge variant={item.priority === 'essential' ? 'destructive' : 'secondary'}>
+                          {item.priority === 'essential' ? 'Urgent' : 'Standard'}
+                        </Badge>
+                        <div>
+                          <p className="font-medium text-foreground capitalize">{item.drugName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Order {item.suggestedOrderQty} units • {item.daysUntilStockout} days to stockout
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-foreground">{formatCurrency(item.totalCost)}</p>
+                        <p className="text-xs text-muted-foreground">{formatCurrency(item.unitPrice)}/unit</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-foreground">{formatCurrency(item.totalCost)}</p>
-                      <p className="text-xs text-muted-foreground">{item.profitMargin.toFixed(0)}% margin</p>
-                    </div>
-                  </div>
-                ))}
-                {budgetAllocation.withinBudget.length > 10 && (
-                  <p className="text-sm text-muted-foreground text-center pt-2">
-                    +{budgetAllocation.withinBudget.length - 10} more items...
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </CardContent>
-      </Card>
-
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            Analysis Filters
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">
-                Product Category
-              </label>
-              <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Products</SelectItem>
-                  {getDrugCategories().map(category => (
-                    <SelectItem key={category} value={category.toLowerCase()}>
-                      {category}
-                    </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">
-                External Factors
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {externalFactors.map((factor) => (
-                  <Badge
-                    key={factor.factor}
-                    variant={selectedFactors.includes(factor.factor) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => toggleFactor(factor.factor)}
-                  >
-                    {factor.factor}
-                    {factor.trend === 'up' ? (
-                      <TrendingUp className="h-3 w-3 ml-1" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3 ml-1" />
-                    )}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </CardContent>
       </Card>
-
 
       {/* Main Charts */}
       <Tabs defaultValue="demand" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="demand">Demand Forecast</TabsTrigger>
-          <TabsTrigger value="seasonal">Seasonal Trends</TabsTrigger>
+          <TabsTrigger value="demand">Sales Trends</TabsTrigger>
           <TabsTrigger value="products">Product Analysis</TabsTrigger>
+          <TabsTrigger value="factors">External Factors</TabsTrigger>
         </TabsList>
 
         <TabsContent value="demand" className="space-y-6">
@@ -538,205 +593,55 @@ const ForecastingDashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5" />
-                Actual Sales vs Predicted Demand
+                Historical Sales Trends
               </CardTitle>
-              <div className="mt-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
-                <p className="text-sm font-medium text-foreground">
-                  Overall Forecast Accuracy: <span className="text-lg font-bold text-primary">{overallAccuracy.toFixed(1)}%</span>
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Based on {accuracyByPeriod.length} months of actual vs predicted data comparison
-                </p>
-              </div>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
+            <CardContent>
+              {salesChartData.length > 0 ? (
                 <ChartContainer config={chartConfig} className="h-80">
-                  <LineChart data={salesData}>
+                  <LineChart data={salesChartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis 
                       dataKey="month" 
                       tick={{ fontSize: 12 }}
                       stroke="hsl(var(--muted-foreground))"
-                      label={{ value: 'Time Period (Months)', position: 'insideBottom', offset: -5, style: { fill: 'hsl(var(--foreground))' } }}
                     />
                     <YAxis 
                       tick={{ fontSize: 12 }}
                       stroke="hsl(var(--muted-foreground))"
-                      label={{ value: 'Sales Amount ($)', angle: -90, position: 'insideLeft', style: { fill: 'hsl(var(--foreground))' } }}
                     />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Legend 
-                      wrapperStyle={{ paddingTop: '20px' }}
-                      iconType="line"
-                    />
+                    <Legend />
                     <Line
                       type="monotone"
                       dataKey="actual"
-                      name="Actual Sales"
+                      name="Revenue"
                       stroke="var(--color-actual)"
                       strokeWidth={3}
-                      dot={{ fill: "var(--color-actual)", r: 5 }}
-                      connectNulls={false}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="predicted"
-                      name="Predicted Sales"
-                      stroke="var(--color-predicted)"
-                      strokeWidth={3}
-                      strokeDasharray="5 5"
-                      dot={{ fill: "var(--color-predicted)", r: 5 }}
+                      dot={{ fill: "var(--color-actual)", r: 4 }}
                     />
                   </LineChart>
                 </ChartContainer>
-              </div>
-
-              {/* Accuracy Breakdown by Period */}
-              <div className="space-y-3">
-                <h4 className="font-semibold text-foreground">Forecast Accuracy by Period</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {accuracyByPeriod.map((period) => (
-                    <div 
-                      key={period.month}
-                      className={`p-3 rounded-lg border ${
-                        period.isAccurate 
-                          ? 'bg-success/10 border-success/30' 
-                          : 'bg-warning/10 border-warning/30'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-foreground">{period.month}</span>
-                        {period.isAccurate ? (
-                          <CheckCircle2 className="h-4 w-4 text-success" />
-                        ) : (
-                          <AlertTriangle className="h-4 w-4 text-warning" />
-                        )}
-                      </div>
-                      <div className="flex items-baseline gap-2">
-                        <span className={`text-lg font-bold ${period.isAccurate ? 'text-success' : 'text-warning'}`}>
-                          {period.accuracy.toFixed(1)}%
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          accuracy
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Deviation: ${period.deviation.toFixed(0)}
-                      </p>
-                    </div>
-                  ))}
+              ) : (
+                <div className="h-80 flex items-center justify-center text-muted-foreground">
+                  <p>Import transaction history to see sales trends</p>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Metrics Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Forecast Accuracy</p>
-                    <p className="text-2xl font-bold text-success">94.2%</p>
-                  </div>
-                  <TrendingUp className="h-8 w-8 text-success" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Next Month Predicted</p>
-                    <p className="text-2xl font-bold text-primary">
-                      ${Math.round(drugs.reduce((sum, drug) => sum + (drug.price_USD || 0), 0) * 1.2)}
-                    </p>
-                  </div>
-                  <Package className="h-8 w-8 text-primary" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Growth Rate</p>
-                    <p className="text-2xl font-bold text-accent">+12.5%</p>
-                  </div>
-                  <Calendar className="h-8 w-8 text-accent" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="seasonal" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Seasonal Demand Patterns</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer config={chartConfig} className="h-80">
-                <AreaChart data={seasonalTrends}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="period" 
-                    stroke="hsl(var(--muted-foreground))"
-                  />
-                  <YAxis stroke="hsl(var(--muted-foreground))" />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Area
-                    type="monotone"
-                    dataKey="antibiotics"
-                    stackId="1"
-                    stroke="hsl(var(--primary))"
-                    fill="hsl(var(--primary))"
-                    fillOpacity={0.3}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="painkillers"
-                    stackId="1"
-                    stroke="hsl(var(--accent))"
-                    fill="hsl(var(--accent))"
-                    fillOpacity={0.3}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="vitamins"
-                    stackId="1"
-                    stroke="hsl(var(--success))"
-                    fill="hsl(var(--success))"
-                    fillOpacity={0.3}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="allergy"
-                    stackId="1"
-                    stroke="hsl(var(--warning))"
-                    fill="hsl(var(--warning))"
-                    fillOpacity={0.3}
-                  />
-                </AreaChart>
-              </ChartContainer>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="products" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Performing Products</CardTitle>
-              </CardHeader>
-              <CardContent>
+          <Card>
+            <CardHeader>
+              <CardTitle>Top Selling Products</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {productDistribution.length > 0 ? (
                 <ChartContainer config={chartConfig} className="h-80">
                   <PieChart>
                     <Pie
-                      data={productPerformance}
+                      data={productDistribution}
                       cx="50%"
                       cy="50%"
                       outerRadius={80}
@@ -744,47 +649,53 @@ const ForecastingDashboard = () => {
                       dataKey="value"
                       label={({ name, value }) => `${name}: ${value}%`}
                     >
-                      {productPerformance.map((entry, index) => (
+                      {productDistribution.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
                     <ChartTooltip content={<ChartTooltipContent />} />
                   </PieChart>
                 </ChartContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>External Factor Impact</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {externalFactors.map((factor) => (
-                    <div key={factor.factor} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                      <div>
-                        <p className="font-medium text-foreground">{factor.factor}</p>
-                        <p className="text-sm text-muted-foreground">Impact: {factor.impact}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge 
-                          variant={factor.trend === 'up' ? 'default' : 'secondary'}
-                          className="flex items-center gap-1"
-                        >
-                          {factor.trend === 'up' ? (
-                            <TrendingUp className="h-3 w-3" />
-                          ) : (
-                            <TrendingDown className="h-3 w-3" />
-                          )}
-                          {factor.change}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
+              ) : (
+                <div className="h-80 flex items-center justify-center text-muted-foreground">
+                  <p>Import transaction history to see product analysis</p>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="factors" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>External Factor Impact</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {externalFactors.map((factor) => (
+                  <div key={factor.factor} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    <div>
+                      <p className="font-medium text-foreground">{factor.factor}</p>
+                      <p className="text-sm text-muted-foreground">Impact: {factor.impact}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge 
+                        variant={factor.trend === 'up' ? 'default' : 'secondary'}
+                        className="flex items-center gap-1"
+                      >
+                        {factor.trend === 'up' ? (
+                          <TrendingUp className="h-3 w-3" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3" />
+                        )}
+                        {factor.change}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
@@ -795,10 +706,10 @@ const ForecastingDashboard = () => {
             <div>
               <h3 className="font-semibold text-foreground">Generate Detailed Report</h3>
               <p className="text-sm text-muted-foreground">
-                Export comprehensive forecasting analysis with recommendations
+                Export comprehensive forecasting analysis with AI recommendations
               </p>
             </div>
-            <Button>
+            <Button disabled={!forecastResult}>
               Download Report
             </Button>
           </div>
