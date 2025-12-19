@@ -7,9 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/contexts/CurrencyContext";
+import { exportForecastToCSV, exportForecastToPDF } from "@/lib/exportForecast";
 import SalesHistoryImport from "./SalesHistoryImport";
 import {
   ChartContainer,
@@ -32,7 +34,7 @@ import {
   Cell,
   Legend
 } from "recharts";
-import { TrendingUp, TrendingDown, Calendar, Package, BarChart3, Filter, DollarSign, AlertTriangle, CheckCircle2, Loader2, Brain, ShoppingCart } from "lucide-react";
+import { TrendingUp, TrendingDown, Calendar, Package, BarChart3, Filter, DollarSign, AlertTriangle, CheckCircle2, Loader2, Brain, ShoppingCart, Download, FileText, FileSpreadsheet } from "lucide-react";
 
 interface ProductForecast {
   drugName: string;
@@ -699,19 +701,40 @@ const ForecastingDashboard = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Action Button */}
+      {/* Export Report Section */}
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-foreground">Generate Detailed Report</h3>
+              <h3 className="font-semibold text-foreground">Export Forecast Report</h3>
               <p className="text-sm text-muted-foreground">
-                Export comprehensive forecasting analysis with AI recommendations
+                Download comprehensive forecasting analysis with AI recommendations
               </p>
             </div>
-            <Button disabled={!forecastResult}>
-              Download Report
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button disabled={!forecastResult} className="gap-2">
+                  <Download className="h-4 w-4" />
+                  Export Report
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => forecastResult && exportForecastToCSV(forecastResult, forecastHorizon)}
+                  className="gap-2 cursor-pointer"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Export as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => forecastResult && exportForecastToPDF(forecastResult, forecastHorizon)}
+                  className="gap-2 cursor-pointer"
+                >
+                  <FileText className="h-4 w-4" />
+                  Export as PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardContent>
       </Card>
