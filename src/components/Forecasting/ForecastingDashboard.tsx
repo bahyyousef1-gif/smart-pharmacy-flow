@@ -34,10 +34,11 @@ import {
   Cell,
   Legend
 } from "recharts";
-import { TrendingUp, TrendingDown, Calendar, Package, BarChart3, Filter, DollarSign, AlertTriangle, CheckCircle2, Loader2, Brain, ShoppingCart, Download, FileText, FileSpreadsheet } from "lucide-react";
+import { TrendingUp, TrendingDown, Calendar, Package, BarChart3, Filter, DollarSign, AlertTriangle, CheckCircle2, Loader2, Brain, ShoppingCart, Download, FileText, FileSpreadsheet, Cpu } from "lucide-react";
 
 interface ProductForecast {
   drugName: string;
+  productId?: string;
   currentStock: number;
   avgMonthlySales: number;
   predictedDemand: {
@@ -50,6 +51,14 @@ interface ProductForecast {
   reorderPoint: number;
   suggestedOrderQty: number;
   daysUntilStockout: number;
+  safetyStock?: number;
+  estimatedCost?: number;
+  reason?: string;
+}
+
+interface MLBudgetInfo {
+  budget_used_egp: number;
+  budget_remaining_egp: number;
 }
 
 interface ForecastResult {
@@ -58,6 +67,11 @@ interface ForecastResult {
   seasonalPatterns: string;
   riskAnalysis: string;
   timestamp: string;
+  budget?: MLBudgetInfo;
+  settings?: {
+    budget_egp: number;
+    horizon_days: number;
+  };
 }
 
 const chartConfig = {
@@ -96,7 +110,9 @@ const ForecastingDashboard = () => {
   const [budgetPeriod, setBudgetPeriod] = useState<"weekly" | "monthly" | "quarterly">("monthly");
   const [forecastResult, setForecastResult] = useState<ForecastResult | null>(null);
   const [generatingForecast, setGeneratingForecast] = useState(false);
+  const [generatingMLForecast, setGeneratingMLForecast] = useState(false);
   const [forecastHorizon, setForecastHorizon] = useState(90);
+  const [mlHorizonDays, setMlHorizonDays] = useState(7);
   const { toast } = useToast();
   const { formatCurrency } = useCurrency();
 
@@ -164,6 +180,44 @@ const ForecastingDashboard = () => {
       });
     } finally {
       setGeneratingForecast(false);
+    }
+  };
+
+  const generateMLForecast = async () => {
+    try {
+      setGeneratingMLForecast(true);
+      toast({
+        title: "Running ML Demand Prediction",
+        description: "Calling your custom ML model...",
+      });
+
+      const { data, error } = await supabase.functions.invoke('ml-demand-forecast', {
+        body: {
+          budget_egp: budget,
+          horizon_days: mlHorizonDays
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setForecastResult(data);
+      toast({
+        title: "ML Forecast Complete",
+        description: `Predicted ${data.predictions?.length || 0} products with budget ${formatCurrency(data.budget?.budget_used_egp || 0)} used`,
+      });
+    } catch (error: any) {
+      console.error('Error generating ML forecast:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate ML forecast. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingMLForecast(false);
     }
   };
 
@@ -304,7 +358,7 @@ const ForecastingDashboard = () => {
             Real AI-powered demand predictions based on your transaction history
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Select value={forecastHorizon.toString()} onValueChange={(v) => setForecastHorizon(parseInt(v))}>
             <SelectTrigger className="w-[140px]">
               <SelectValue />
@@ -318,9 +372,10 @@ const ForecastingDashboard = () => {
           </Select>
           <Button 
             onClick={generateForecast} 
-            disabled={generatingForecast || salesHistory.length === 0}
+            disabled={generatingForecast || generatingMLForecast || salesHistory.length === 0}
             size="lg"
             className="gap-2"
+            variant="outline"
           >
             {generatingForecast ? (
               <>
@@ -330,10 +385,40 @@ const ForecastingDashboard = () => {
             ) : (
               <>
                 <Brain className="h-4 w-4" />
-                Generate AI Forecast
+                AI Forecast
               </>
             )}
           </Button>
+          <div className="flex items-center gap-2 border-l pl-3">
+            <Select value={mlHorizonDays.toString()} onValueChange={(v) => setMlHorizonDays(parseInt(v))}>
+              <SelectTrigger className="w-[100px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">7 days</SelectItem>
+                <SelectItem value="14">14 days</SelectItem>
+                <SelectItem value="30">30 days</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button 
+              onClick={generateMLForecast} 
+              disabled={generatingForecast || generatingMLForecast}
+              size="lg"
+              className="gap-2"
+            >
+              {generatingMLForecast ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Predicting...
+                </>
+              ) : (
+                <>
+                  <Cpu className="h-4 w-4" />
+                  ML Forecast
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -382,11 +467,33 @@ const ForecastingDashboard = () => {
         <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Brain className="h-5 w-5 text-primary" />
-              AI Forecast Predictions ({forecastResult.predictions.length} products)
+              {forecastResult.budget ? <Cpu className="h-5 w-5 text-primary" /> : <Brain className="h-5 w-5 text-primary" />}
+              {forecastResult.budget ? 'ML' : 'AI'} Forecast Predictions ({forecastResult.predictions.length} products)
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* ML Budget Info */}
+            {forecastResult.budget && (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-primary/10 rounded-lg border border-primary/20">
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Budget Allocated</p>
+                  <p className="text-xl font-bold text-foreground">{formatCurrency(forecastResult.settings?.budget_egp || 0)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Budget Used</p>
+                  <p className="text-xl font-bold text-success">{formatCurrency(forecastResult.budget.budget_used_egp)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Budget Remaining</p>
+                  <p className="text-xl font-bold text-accent">{formatCurrency(forecastResult.budget.budget_remaining_egp)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Forecast Horizon</p>
+                  <p className="text-xl font-bold text-foreground">{forecastResult.settings?.horizon_days || mlHorizonDays} days</p>
+                </div>
+              </div>
+            )}
+
             {/* Insights */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-4 bg-background rounded-lg border">
@@ -409,19 +516,20 @@ const ForecastingDashboard = () => {
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left p-3 font-medium text-muted-foreground">Product</th>
-                    <th className="text-center p-3 font-medium text-muted-foreground">Current Stock</th>
                     <th className="text-center p-3 font-medium text-muted-foreground">Predicted Demand</th>
-                    <th className="text-center p-3 font-medium text-muted-foreground">Trend</th>
-                    <th className="text-center p-3 font-medium text-muted-foreground">Confidence</th>
-                    <th className="text-center p-3 font-medium text-muted-foreground">Days to Stockout</th>
+                    <th className="text-center p-3 font-medium text-muted-foreground">Safety Stock</th>
                     <th className="text-center p-3 font-medium text-muted-foreground">Suggested Order</th>
+                    {forecastResult.budget && (
+                      <th className="text-center p-3 font-medium text-muted-foreground">Est. Cost</th>
+                    )}
+                    <th className="text-center p-3 font-medium text-muted-foreground">Confidence</th>
+                    <th className="text-left p-3 font-medium text-muted-foreground">Reason</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {forecastResult.predictions.slice(0, 10).map((prediction, idx) => (
+                  {forecastResult.predictions.slice(0, 15).map((prediction, idx) => (
                     <tr key={idx} className="border-b border-border/50 hover:bg-muted/30">
                       <td className="p-3 font-medium text-foreground capitalize">{prediction.drugName}</td>
-                      <td className="p-3 text-center text-foreground">{prediction.currentStock}</td>
                       <td className="p-3 text-center">
                         <div className="flex flex-col items-center">
                           <span className="font-semibold text-primary">{prediction.predictedDemand.medium}</span>
@@ -430,25 +538,23 @@ const ForecastingDashboard = () => {
                           </span>
                         </div>
                       </td>
-                      <td className="p-3 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {getTrendIcon(prediction.trend)}
-                          <span className="capitalize text-muted-foreground">{prediction.trend}</span>
-                        </div>
+                      <td className="p-3 text-center text-muted-foreground">
+                        {prediction.safetyStock ?? prediction.reorderPoint}
                       </td>
+                      <td className="p-3 text-center font-semibold text-accent">{prediction.suggestedOrderQty}</td>
+                      {forecastResult.budget && (
+                        <td className="p-3 text-center text-foreground">
+                          {prediction.estimatedCost ? formatCurrency(prediction.estimatedCost) : '-'}
+                        </td>
+                      )}
                       <td className="p-3 text-center">
                         <Badge variant={prediction.confidence >= 0.8 ? "default" : "secondary"}>
                           {(prediction.confidence * 100).toFixed(0)}%
                         </Badge>
                       </td>
-                      <td className="p-3 text-center">
-                        <Badge 
-                          variant={prediction.daysUntilStockout < 14 ? "destructive" : prediction.daysUntilStockout < 30 ? "secondary" : "outline"}
-                        >
-                          {prediction.daysUntilStockout} days
-                        </Badge>
+                      <td className="p-3 text-left text-xs text-muted-foreground max-w-[200px] truncate" title={prediction.reason}>
+                        {prediction.reason || '-'}
                       </td>
-                      <td className="p-3 text-center font-semibold text-accent">{prediction.suggestedOrderQty}</td>
                     </tr>
                   ))}
                 </tbody>
