@@ -25,6 +25,62 @@ const SalesHistoryImport = ({ onImportComplete }: SalesHistoryImportProps) => {
   const [recordCount, setRecordCount] = useState(0);
   const { toast } = useToast();
 
+  // Robust date parser that handles multiple formats
+  const parseFlexibleDate = (dateValue: string | number): string => {
+    // Handle Excel serial dates
+    if (typeof dateValue === 'number') {
+      const excelDate = XLSX.SSF.parse_date_code(dateValue);
+      return `${excelDate.y}-${String(excelDate.m).padStart(2, '0')}-${String(excelDate.d).padStart(2, '0')}`;
+    }
+
+    const dateStr = String(dateValue).trim();
+    if (!dateStr) {
+      return new Date().toISOString().split('T')[0];
+    }
+
+    // Try ISO format first (YYYY-MM-DD)
+    if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(dateStr)) {
+      const [year, month, day] = dateStr.split('-');
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    // Try MM/DD/YYYY or M/D/YYYY (US format)
+    const usMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (usMatch) {
+      const [, month, day, year] = usMatch;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    // Try MM/DD/YY or M/D/YY (short year US format)
+    const usShortMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+    if (usShortMatch) {
+      const [, month, day, shortYear] = usShortMatch;
+      const year = parseInt(shortYear) > 50 ? `19${shortYear}` : `20${shortYear}`;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    // Try DD-MM-YYYY or DD/MM/YYYY (European format - if day > 12, assume DD/MM)
+    const euMatch = dateStr.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+    if (euMatch && parseInt(euMatch[1]) > 12) {
+      const [, day, month, year] = euMatch;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+
+    // Try native Date parsing as last resort
+    try {
+      const parsed = new Date(dateStr);
+      if (!isNaN(parsed.getTime())) {
+        return parsed.toISOString().split('T')[0];
+      }
+    } catch {
+      // Fall through to default
+    }
+
+    // Default to today if all parsing fails
+    console.warn('Could not parse date:', dateValue);
+    return new Date().toISOString().split('T')[0];
+  };
+
   const parseExcelFile = async (file: File): Promise<SalesRecord[]> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -37,20 +93,7 @@ const SalesHistoryImport = ({ onImportComplete }: SalesHistoryImportProps) => {
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
           const records: SalesRecord[] = jsonData.map((row: any) => {
-            // Parse date - handle Excel serial dates
-            let dateStr: string;
-            const dateValue = row['Date'];
-            
-            if (typeof dateValue === 'number') {
-              // Excel serial date
-              const excelDate = XLSX.SSF.parse_date_code(dateValue);
-              dateStr = `${excelDate.y}-${String(excelDate.m).padStart(2, '0')}-${String(excelDate.d).padStart(2, '0')}`;
-            } else if (dateValue) {
-              const parsed = new Date(dateValue);
-              dateStr = parsed.toISOString().split('T')[0];
-            } else {
-              dateStr = new Date().toISOString().split('T')[0];
-            }
+            const dateStr = parseFlexibleDate(row['Date']);
 
             return {
               Date: dateStr,
