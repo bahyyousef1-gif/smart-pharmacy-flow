@@ -36,28 +36,27 @@ const InventoryUpload = () => {
         throw new Error('File appears to be empty or has no data rows');
       }
 
-      // Parse CSV (assuming format: name,stock,price_EGP,price_USD,date)
+      // Parse CSV (assuming format: name,product_code,stock_quantity)
       const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
       const data = lines.slice(1).map(line => {
         const values = line.split(',').map(v => v.trim());
-        const row: any = {};
         
-        headers.forEach((header, index) => {
-          const value = values[index];
-          if (header.includes('price') || header.includes('stock')) {
-            row[header] = value ? parseFloat(value) : null;
-          } else {
-            row[header] = value || null;
-          }
-        });
+        // Map to Inventory_2023 format
+        const nameIdx = headers.findIndex(h => h.includes('name'));
+        const codeIdx = headers.findIndex(h => h.includes('code') || h.includes('product'));
+        const stockIdx = headers.findIndex(h => h.includes('stock') || h.includes('quantity'));
         
-        return row;
-      });
+        return {
+          name: nameIdx >= 0 ? values[nameIdx] || null : null,
+          product_code: codeIdx >= 0 ? (values[codeIdx] ? parseInt(values[codeIdx]) : null) : null,
+          stock_quantity: stockIdx >= 0 ? (values[stockIdx] ? parseFloat(values[stockIdx]) : null) : null
+        };
+      }).filter(row => row.name); // Filter out rows without names
 
       // Insert data into Supabase
       const { error } = await supabase
-        .from('Drugs dataset')
-        .upsert(data, { onConflict: 'name' });
+        .from('Inventory_2023')
+        .insert(data);
 
       if (error) throw error;
 
@@ -149,7 +148,7 @@ const InventoryUpload = () => {
         <div className="text-xs text-muted-foreground space-y-1">
           <p className="font-medium">Expected CSV format:</p>
           <code className="block bg-muted p-2 rounded text-xs">
-            name,stock,price_EGP,price_USD,date
+            name,product_code,stock_quantity
           </code>
         </div>
       </CardContent>

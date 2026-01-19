@@ -107,7 +107,16 @@ const SalesHistoryImport = () => {
 
       for (let i = 0; i < records.length; i += batchSize) {
         const batch = records.slice(i, i + batchSize);
-        const { error } = await supabase.from('sales_history').insert(batch);
+        // Transform to sales_history_2023 format
+        const transformedBatch = batch.map(record => ({
+          Item_Name: record.drug_name,
+          Net_Daily_Sales: record.quantity_sold,
+          Daily_Revenue: record.total_revenue,
+          Date: record.sale_date,
+          Item_Code: null
+        }));
+        
+        const { error } = await supabase.from('sales_history_2023').insert(transformedBatch);
         
         if (error) {
           throw error;

@@ -67,24 +67,25 @@ const SmartOrdering = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('Drugs dataset')
-        .select('*');
+        .from('Inventory_2023')
+        .select('name, product_code, stock_quantity')
+        .limit(50);
       
       if (error) throw error;
       
-      // Transform drug data into order format
-      const orderSuggestions = (data || []).slice(0, 10).map((drug, index) => {
-        const suggestedQty = Math.floor(Math.random() * 100) + 50;
-        const unitPrice = drug.price_USD || 0;
-        const minStock = Math.floor(Math.random() * 30) + 10;
-        const currentStock = Math.floor(Math.random() * 50) + 5;
+      // Transform inventory data into order format
+      const orderSuggestions = (data || []).slice(0, 10).map((item, index) => {
+        const currentStock = item.stock_quantity || 0;
+        const minStock = 50; // Default minimum stock threshold
+        const suggestedQty = Math.max(0, minStock - currentStock + 20);
+        const unitPrice = 10; // Default unit price since not in Inventory_2023
         const forecastDemand = Math.floor(Math.random() * 150) + 80;
         
         return {
-          id: String(index + 1),
-          drugName: drug.name || 'Unknown Drug',
+          id: item.product_code ? String(item.product_code) : String(index + 1),
+          drugName: item.name || 'Unknown Drug',
           supplier: 'AutoSelect Supplier',
-          currentStock,
+          currentStock: Math.round(currentStock),
           minimumStock: minStock,
           forecastDemand,
           suggestedQuantity: suggestedQty,
@@ -92,10 +93,10 @@ const SmartOrdering = () => {
           daysSupply: Math.floor(Math.random() * 60) + 30,
           totalCost: unitPrice * suggestedQty,
           status: currentStock < minStock ? 'urgent' : forecastDemand > currentStock * 2 ? 'suggested' : 'optimal',
-          priority: ['High', 'Medium', 'Low'][Math.floor(Math.random() * 3)],
+          priority: currentStock < minStock ? 'High' : currentStock < minStock * 1.5 ? 'Medium' : 'Low',
           expectedDelivery: '2-3 days',
           lastOrderDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          aiReason: `Low stock detected. Predicted demand based on sales history.`
+          aiReason: currentStock < minStock ? `Low stock (${Math.round(currentStock)} units). Needs replenishment.` : 'Stock levels adequate.'
         };
       });
       

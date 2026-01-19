@@ -14,30 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      "Drugs dataset": {
-        Row: {
-          date: string | null
-          name: string | null
-          price_EGP: number | null
-          price_USD: number | null
-          stock: string | null
-        }
-        Insert: {
-          date?: string | null
-          name?: string | null
-          price_EGP?: number | null
-          price_USD?: number | null
-          stock?: string | null
-        }
-        Update: {
-          date?: string | null
-          name?: string | null
-          price_EGP?: number | null
-          price_USD?: number | null
-          stock?: string | null
-        }
-        Relationships: []
-      }
       forecast_results: {
         Row: {
           accuracy_score: number | null
@@ -80,33 +56,45 @@ export type Database = {
         }
         Relationships: []
       }
-      sales_history: {
+      Inventory_2023: {
         Row: {
-          created_at: string
-          drug_name: string
-          id: string
-          quantity_sold: number
-          sale_date: string
-          total_revenue: number
-          unit_price: number
+          name: string | null
+          product_code: number | null
+          stock_quantity: number | null
         }
         Insert: {
-          created_at?: string
-          drug_name: string
-          id?: string
-          quantity_sold: number
-          sale_date: string
-          total_revenue: number
-          unit_price: number
+          name?: string | null
+          product_code?: number | null
+          stock_quantity?: number | null
         }
         Update: {
-          created_at?: string
-          drug_name?: string
-          id?: string
-          quantity_sold?: number
-          sale_date?: string
-          total_revenue?: number
-          unit_price?: number
+          name?: string | null
+          product_code?: number | null
+          stock_quantity?: number | null
+        }
+        Relationships: []
+      }
+      sales_history_2023: {
+        Row: {
+          Daily_Revenue: number | null
+          Date: string | null
+          Item_Code: number | null
+          Item_Name: string | null
+          Net_Daily_Sales: number | null
+        }
+        Insert: {
+          Daily_Revenue?: number | null
+          Date?: string | null
+          Item_Code?: number | null
+          Item_Name?: string | null
+          Net_Daily_Sales?: number | null
+        }
+        Update: {
+          Daily_Revenue?: number | null
+          Date?: string | null
+          Item_Code?: number | null
+          Item_Name?: string | null
+          Net_Daily_Sales?: number | null
         }
         Relationships: []
       }

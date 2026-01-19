@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from "@/integrations/supabase/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Database as DatabaseIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-type Drug = Database['public']['Tables']['Drugs dataset']['Row'];
+interface InventoryItem {
+  name: string | null;
+  product_code: number | null;
+  stock_quantity: number | null;
+}
 
 const DrugsTable = () => {
-  const [drugs, setDrugs] = useState<Drug[]>([]);
+  const [drugs, setDrugs] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -22,9 +25,10 @@ const DrugsTable = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('Drugs dataset')
-        .select('*')
-        .order('name');
+        .from('Inventory_2023')
+        .select('name, product_code, stock_quantity')
+        .order('name')
+        .limit(100);
 
       if (error) {
         throw error;
@@ -43,24 +47,16 @@ const DrugsTable = () => {
     }
   };
 
-  const formatPrice = (price: number | null, currency: string) => {
-    if (!price) return 'N/A';
-    return `${price.toFixed(2)} ${currency}`;
+  const getStockBadgeVariant = (stock: number | null) => {
+    if (stock === null || stock === 0) return 'destructive';
+    if (stock < 50) return 'secondary';
+    return 'default';
   };
 
-  const getStockBadgeVariant = (stock: string | null) => {
-    if (!stock) return 'secondary';
-    const stockLower = stock.toLowerCase();
-    if (stockLower.includes('in stock') || stockLower.includes('available')) {
-      return 'default';
-    }
-    if (stockLower.includes('low') || stockLower.includes('limited')) {
-      return 'destructive';
-    }
-    if (stockLower.includes('out') || stockLower.includes('unavailable')) {
-      return 'outline';
-    }
-    return 'secondary';
+  const getStockLabel = (stock: number | null) => {
+    if (stock === null || stock === 0) return 'Out of Stock';
+    if (stock < 50) return 'Low Stock';
+    return 'In Stock';
   };
 
   return (
@@ -68,28 +64,28 @@ const DrugsTable = () => {
       <CardHeader>
         <CardTitle className="flex items-center">
           <DatabaseIcon className="h-5 w-5 mr-2 text-primary" />
-          Drugs Database
+          Inventory Database
         </CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <span className="ml-2 text-muted-foreground">Loading drugs data...</span>
+            <span className="ml-2 text-muted-foreground">Loading inventory data...</span>
           </div>
         ) : drugs.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-muted-foreground">No drugs data available</p>
+            <p className="text-muted-foreground">No inventory data available</p>
           </div>
         ) : (
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Drug Name</TableHead>
-                  <TableHead>Price (EGP)</TableHead>
-                  <TableHead>Price (USD)</TableHead>
-                  <TableHead>Stock Status</TableHead>
+                  <TableHead>Product Name</TableHead>
+                  <TableHead>Product Code</TableHead>
+                  <TableHead>Stock Quantity</TableHead>
+                  <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -99,14 +95,14 @@ const DrugsTable = () => {
                       {drug.name || 'Unknown'}
                     </TableCell>
                     <TableCell>
-                      {formatPrice(drug.price_EGP, 'EGP')}
+                      {drug.product_code || 'N/A'}
                     </TableCell>
                     <TableCell>
-                      {formatPrice(drug.price_USD, 'USD')}
+                      {drug.stock_quantity?.toFixed(0) || '0'}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getStockBadgeVariant(drug.stock)}>
-                        {drug.stock || 'Unknown'}
+                      <Badge variant={getStockBadgeVariant(drug.stock_quantity)}>
+                        {getStockLabel(drug.stock_quantity)}
                       </Badge>
                     </TableCell>
                   </TableRow>
