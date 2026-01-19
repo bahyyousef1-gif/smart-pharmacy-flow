@@ -74,9 +74,12 @@ const SmartOrdering = () => {
       if (error) throw error;
       
       // Transform inventory data into order format
+      // Stock thresholds: Critical = 3 units, Low = 7 units
+      const LOW_STOCK = 7;
+      
       const orderSuggestions = (data || []).slice(0, 10).map((item, index) => {
         const currentStock = item.stock_quantity || 0;
-        const minStock = 50; // Default minimum stock threshold
+        const minStock = LOW_STOCK;
         const suggestedQty = Math.max(0, minStock - currentStock + 20);
         const unitPrice = 10; // Default unit price since not in Inventory_2023
         const forecastDemand = Math.floor(Math.random() * 150) + 80;
