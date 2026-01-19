@@ -9,6 +9,7 @@ import SmartOrdering from "@/components/Orders/SmartOrdering";
 import InsuranceModule from "@/components/Insurance/InsuranceModule";
 import P2POrderingModule from "@/components/P2P/P2POrderingModule";
 import ForecastingDashboard from "@/components/Forecasting/ForecastingDashboard";
+import DemandForecastDashboard from "@/components/Forecasting/DemandForecastDashboard";
 import DrugsTable from "@/components/Database/DrugsTable";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,8 @@ const Index = () => {
         return <P2POrderingModule />;
       case "forecasting":
         return <ForecastingDashboard />;
+      case "demand-forecast":
+        return <DemandForecastDashboard />;
       case "suppliers":
         return <SuppliersView />;
       case "alerts":
