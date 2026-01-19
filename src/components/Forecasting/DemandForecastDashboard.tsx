@@ -26,7 +26,9 @@ import {
   AlertTriangle, 
   Plus,
   Package,
-  DollarSign
+  DollarSign,
+  Brain,
+  Loader2
 } from "lucide-react";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
 import SalesHistoryImport from "./SalesHistoryImport";
@@ -54,6 +56,7 @@ const DemandForecastDashboard = () => {
   const { toast } = useToast();
   const [forecasts, setForecasts] = useState<ForecastItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("CRITICAL");
   const [orderList, setOrderList] = useState<OrderItem[]>([]);
   const [editedQuantities, setEditedQuantities] = useState<Record<string, number>>({});
@@ -113,6 +116,88 @@ const DemandForecastDashboard = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateForecast = async () => {
+    try {
+      setGenerating(true);
+      toast({
+        title: "Generating Forecast",
+        description: "AI is analyzing your transaction history...",
+      });
+
+      // Call the ML demand forecast edge function
+      const { data, error } = await supabase.functions.invoke('ml-demand-forecast', {
+        body: { budget_egp: 50000, horizon_days: 30 }
+      });
+
+      if (error) throw error;
+
+      if (data?.predictions && data.predictions.length > 0) {
+        // Clear existing forecasts and insert new ones
+        await supabase.from('daily_forecasts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+        // Transform predictions to daily_forecasts format
+        const forecastRecords = data.predictions.map((prediction: any) => {
+          const currentStock = prediction.currentStock || 0;
+          const demand = prediction.predictedDemand?.medium || prediction.suggestedOrderQty || 0;
+          
+          let status = 'OK';
+          if (currentStock <= prediction.safetyStock) {
+            status = 'CRITICAL';
+          } else if (currentStock <= prediction.reorderPoint) {
+            status = 'LOW';
+          }
+
+          return {
+            product_code: parseInt(prediction.productId) || Math.floor(Math.random() * 100000),
+            product_name: prediction.drugName,
+            predicted_qty: demand,
+            suggested_order: prediction.suggestedOrderQty || 0,
+            status: status,
+            trend_data: [
+              prediction.predictedDemand?.low || 0,
+              prediction.predictedDemand?.medium || 0,
+              prediction.predictedDemand?.high || 0,
+              prediction.predictedDemand?.medium || 0,
+              prediction.predictedDemand?.low || 0
+            ]
+          };
+        });
+
+        const { error: insertError } = await supabase
+          .from('daily_forecasts')
+          .insert(forecastRecords);
+
+        if (insertError) {
+          console.error('Insert error:', insertError);
+          throw insertError;
+        }
+
+        toast({
+          title: "Forecast Generated",
+          description: `AI analyzed ${data.predictions.length} products. Budget used: ${data.budget?.budget_used_egp?.toLocaleString() || 0} EGP`,
+        });
+
+        // Refresh the forecasts table
+        await fetchForecasts();
+      } else {
+        toast({
+          title: "No Predictions",
+          description: "The AI model did not return any predictions. Make sure you have transaction history data.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Forecast generation error:', error);
+      toast({
+        title: "Forecast Failed",
+        description: error.message || "Failed to generate AI forecast",
+        variant: "destructive",
+      });
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -241,8 +326,30 @@ const DemandForecastDashboard = () => {
         )}
       </div>
 
-      {/* Sales History Import */}
-      <SalesHistoryImport onImportComplete={fetchForecasts} />
+      {/* Sales History Import & Forecast Generation */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+        <div className="flex-1">
+          <SalesHistoryImport onImportComplete={fetchForecasts} />
+        </div>
+        <Button 
+          onClick={generateForecast} 
+          disabled={generating}
+          className="gap-2 h-10"
+          size="lg"
+        >
+          {generating ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Brain className="h-4 w-4" />
+              Generate AI Forecast
+            </>
+          )}
+        </Button>
+      </div>
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
