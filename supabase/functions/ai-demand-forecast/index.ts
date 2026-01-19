@@ -85,12 +85,22 @@ serve(async (req) => {
       const sales = record.Net_Daily_Sales || 0;
       const price = record.Unit_Price || 0;
       
-      // Parse date to get month
+      // Parse date to get month - handle YYYY-MM-DD format (database format)
       let month = 1;
       try {
-        const dateParts = record.Date?.split('/') || [];
-        if (dateParts.length >= 2) {
-          month = parseInt(dateParts[0]) || 1; // MM/DD/YYYY format
+        const dateStr = record.Date || '';
+        // Try YYYY-MM-DD format first (database format)
+        if (dateStr.includes('-')) {
+          const dateParts = dateStr.split('-');
+          if (dateParts.length >= 2) {
+            month = parseInt(dateParts[1]) || 1; // YYYY-MM-DD: month is second part
+          }
+        } else if (dateStr.includes('/')) {
+          // Fallback to MM/DD/YYYY format
+          const dateParts = dateStr.split('/');
+          if (dateParts.length >= 2) {
+            month = parseInt(dateParts[0]) || 1;
+          }
         }
       } catch {
         month = 1;
