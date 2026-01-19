@@ -333,14 +333,20 @@ const DemandForecastDashboard = () => {
                   <TableRow>
                     <TableHead className="font-semibold">Product Name</TableHead>
                     <TableHead className="text-center">Current Stock</TableHead>
-                    <TableHead className="text-center">30-Day Forecast</TableHead>
+                    <TableHead className="text-center">Daily</TableHead>
+                    <TableHead className="text-center">7-Day</TableHead>
+                    <TableHead className="text-center">30-Day</TableHead>
+                    <TableHead className="text-center">Trend</TableHead>
                     <TableHead className="text-center">Status</TableHead>
                     <TableHead className="text-center">Suggested Order</TableHead>
                     <TableHead className="text-center">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedForecasts.map((item) => (
+                  {sortedForecasts.map((item) => {
+                    const dailyForecast = Math.round(item.predicted_qty / 30);
+                    const weeklyForecast = Math.round(item.predicted_qty / 30 * 7);
+                    return (
                     <TableRow key={item.id}>
                       <TableCell className="font-bold">
                         {item.product_name}
@@ -348,13 +354,19 @@ const DemandForecastDashboard = () => {
                       <TableCell className="text-center">
                         {item.current_stock?.toLocaleString() || 0}
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-center gap-2">
-                          <span>{item.predicted_qty}</span>
-                          {item.trend_data.length > 0 && (
-                            <SparklineChart data={item.trend_data} />
-                          )}
-                        </div>
+                      <TableCell className="text-center text-muted-foreground">
+                        {dailyForecast}
+                      </TableCell>
+                      <TableCell className="text-center text-muted-foreground">
+                        {weeklyForecast}
+                      </TableCell>
+                      <TableCell className="text-center font-medium">
+                        {item.predicted_qty}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {item.trend_data.length > 0 && (
+                          <SparklineChart data={item.trend_data} />
+                        )}
                       </TableCell>
                       <TableCell className="text-center">
                         {getStatusBadge(item.status)}
@@ -382,7 +394,8 @@ const DemandForecastDashboard = () => {
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
