@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -28,10 +29,11 @@ import {
   Package,
   DollarSign,
   Brain,
-  Loader2
+  Loader2,
+  Upload
 } from "lucide-react";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
-
+import DataIngestionPipeline from "@/components/DataIngestion/DataIngestionPipeline";
 
 interface ForecastItem {
   id: string;
@@ -54,6 +56,7 @@ interface OrderItem {
 
 const DemandForecastDashboard = () => {
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<"dashboard" | "upload">("dashboard");
   const [forecasts, setForecasts] = useState<ForecastItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -311,27 +314,45 @@ const DemandForecastDashboard = () => {
         )}
       </div>
 
-      {/* Forecast Generation */}
-      <div className="flex justify-end">
-        <Button 
-          onClick={generateForecast} 
-          disabled={generating}
-          className="gap-2 h-10"
-          size="lg"
-        >
-          {generating ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Generating...
-            </>
-          ) : (
-            <>
-              <Brain className="h-4 w-4" />
-              Generate AI Forecast
-            </>
-          )}
-        </Button>
-      </div>
+      {/* Tabs for Dashboard vs Upload */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "dashboard" | "upload")}>
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="dashboard" className="gap-2">
+            <Brain className="h-4 w-4" />
+            Forecasts
+          </TabsTrigger>
+          <TabsTrigger value="upload" className="gap-2">
+            <Upload className="h-4 w-4" />
+            Upload Data
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="upload" className="mt-6">
+          <DataIngestionPipeline />
+        </TabsContent>
+
+        <TabsContent value="dashboard" className="mt-6 space-y-6">
+          {/* Forecast Generation */}
+          <div className="flex justify-end">
+            <Button 
+              onClick={generateForecast} 
+              disabled={generating}
+              className="gap-2 h-10"
+              size="lg"
+            >
+              {generating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Brain className="h-4 w-4" />
+                  Generate AI Forecast
+                </>
+              )}
+            </Button>
+          </div>
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
