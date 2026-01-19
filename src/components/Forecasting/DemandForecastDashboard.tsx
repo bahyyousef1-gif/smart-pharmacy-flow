@@ -31,7 +31,7 @@ import {
   Loader2
 } from "lucide-react";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
-import SalesHistoryImport from "./SalesHistoryImport";
+
 
 interface ForecastItem {
   id: string;
@@ -311,11 +311,8 @@ const DemandForecastDashboard = () => {
         )}
       </div>
 
-      {/* Sales History Import & Forecast Generation */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-        <div className="flex-1">
-          <SalesHistoryImport onImportComplete={fetchForecasts} />
-        </div>
+      {/* Forecast Generation */}
+      <div className="flex justify-end">
         <Button 
           onClick={generateForecast} 
           disabled={generating}

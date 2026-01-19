@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { exportForecastToCSV, exportForecastToPDF } from "@/lib/exportForecast";
-import SalesHistoryImport from "./SalesHistoryImport";
+
 import {
   ChartContainer,
   ChartTooltip,
@@ -437,9 +437,6 @@ const ForecastingDashboard = () => {
           </div>
         </div>
       </div>
-
-      {/* Sales History Import */}
-      <SalesHistoryImport />
 
       {/* Data Status */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
