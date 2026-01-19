@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_forecasts: {
+        Row: {
+          created_at: string
+          id: string
+          predicted_qty: number
+          product_code: number
+          product_name: string
+          status: string
+          suggested_order: number
+          trend_data: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          predicted_qty?: number
+          product_code: number
+          product_name: string
+          status?: string
+          suggested_order?: number
+          trend_data?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          predicted_qty?: number
+          product_code?: number
+          product_name?: string
+          status?: string
+          suggested_order?: number
+          trend_data?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       forecast_results: {
         Row: {
           accuracy_score: number | null
@@ -58,17 +94,26 @@ export type Database = {
       }
       Inventory_2023: {
         Row: {
+          max_stock: number | null
+          min_stock: number | null
           name: string | null
+          price: number | null
           product_code: number | null
           stock_quantity: number | null
         }
         Insert: {
+          max_stock?: number | null
+          min_stock?: number | null
           name?: string | null
+          price?: number | null
           product_code?: number | null
           stock_quantity?: number | null
         }
         Update: {
+          max_stock?: number | null
+          min_stock?: number | null
           name?: string | null
+          price?: number | null
           product_code?: number | null
           stock_quantity?: number | null
         }
