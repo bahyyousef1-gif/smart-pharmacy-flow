@@ -7,11 +7,12 @@ import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
 
 interface SalesRecord {
-  drug_name: string;
-  quantity_sold: number;
-  unit_price: number;
-  total_revenue: number;
-  sale_date: string;
+  Date: string;
+  Item_Code: number;
+  Item_Name: string;
+  Unit_Price: number;
+  Net_Daily_Sales: number;
+  Daily_Revenue: number;
 }
 
 interface SalesHistoryImportProps {
@@ -36,35 +37,30 @@ const SalesHistoryImport = ({ onImportComplete }: SalesHistoryImportProps) => {
           const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
           const records: SalesRecord[] = jsonData.map((row: any) => {
-            // Handle different possible column names
-            const drugName = row['Drug Name'] || row['drug_name'] || row['Name'] || row['Product'] || row['Item'];
-            const quantity = parseFloat(row['Quantity'] || row['quantity_sold'] || row['Qty'] || row['Units'] || 0);
-            const price = parseFloat(row['Price'] || row['unit_price'] || row['Unit Price'] || row['Cost'] || 0);
-            const total = parseFloat(row['Total'] || row['total_revenue'] || row['Revenue'] || row['Amount'] || (quantity * price));
-            
-            // Handle date parsing
-            let saleDate: string;
-            const dateValue = row['Date'] || row['sale_date'] || row['Transaction Date'] || row['date'];
+            // Parse date - handle Excel serial dates
+            let dateStr: string;
+            const dateValue = row['Date'];
             
             if (typeof dateValue === 'number') {
               // Excel serial date
               const excelDate = XLSX.SSF.parse_date_code(dateValue);
-              saleDate = `${excelDate.y}-${String(excelDate.m).padStart(2, '0')}-${String(excelDate.d).padStart(2, '0')}`;
+              dateStr = `${excelDate.y}-${String(excelDate.m).padStart(2, '0')}-${String(excelDate.d).padStart(2, '0')}`;
             } else if (dateValue) {
               const parsed = new Date(dateValue);
-              saleDate = parsed.toISOString().split('T')[0];
+              dateStr = parsed.toISOString().split('T')[0];
             } else {
-              saleDate = new Date().toISOString().split('T')[0];
+              dateStr = new Date().toISOString().split('T')[0];
             }
 
             return {
-              drug_name: drugName || 'Unknown',
-              quantity_sold: Math.round(quantity) || 1,
-              unit_price: price || 0,
-              total_revenue: total || 0,
-              sale_date: saleDate
+              Date: dateStr,
+              Item_Code: parseInt(row['Item_Code']) || 0,
+              Item_Name: row['Item_Name'] || 'Unknown',
+              Unit_Price: parseFloat(row['Unit_Price']) || 0,
+              Net_Daily_Sales: parseFloat(row['Net_Daily_Sales']) || 0,
+              Daily_Revenue: parseFloat(row['Daily_Revenue']) || 0,
             };
-          }).filter(record => record.drug_name && record.drug_name !== 'Unknown');
+          }).filter(record => record.Item_Name && record.Item_Name !== 'Unknown');
 
           resolve(records);
         } catch (error) {
@@ -111,17 +107,8 @@ const SalesHistoryImport = ({ onImportComplete }: SalesHistoryImportProps) => {
 
       for (let i = 0; i < records.length; i += batchSize) {
         const batch = records.slice(i, i + batchSize);
-        // Transform to sales_history_2023 format
-        const transformedBatch = batch.map(record => ({
-          Item_Name: record.drug_name,
-          Item_Code: 0, // Default to 0 if not available
-          Net_Daily_Sales: record.quantity_sold,
-          Daily_Revenue: record.total_revenue,
-          Unit_Price: record.unit_price,
-          Date: record.sale_date,
-        }));
         
-        const { error } = await supabase.from('sales_history_2023').insert(transformedBatch);
+        const { error } = await supabase.from('sales_history_2023').insert(batch);
         
         if (error) {
           throw error;
@@ -208,7 +195,7 @@ const SalesHistoryImport = ({ onImportComplete }: SalesHistoryImportProps) => {
 
           <div className="text-xs text-muted-foreground space-y-1">
             <p className="font-medium">Expected columns:</p>
-            <p>Date, Drug Name, Quantity, Price (or similar column names)</p>
+            <p>Date, Item_Code, Item_Name, Unit_Price, Net_Daily_Sales, Daily_Revenue</p>
           </div>
         </div>
       </CardContent>
