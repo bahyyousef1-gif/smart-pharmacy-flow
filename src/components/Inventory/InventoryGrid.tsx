@@ -65,9 +65,13 @@ const InventoryGrid = () => {
       if (error) throw error;
       
       // Transform Inventory_2023 data into display format
+      // Stock thresholds: Critical = 3 units, Low = 7 units
+      const CRITICAL_STOCK = 3;
+      const LOW_STOCK = 7;
+      
       const inventoryItems = (data || []).map((item, index) => {
         const currentStock = item.stock_quantity || 0;
-        const minimumStock = 50; // Default minimum stock threshold
+        const minimumStock = LOW_STOCK;
         
         return {
           id: item.product_code ? String(item.product_code) : String(index + 1),
@@ -79,8 +83,8 @@ const InventoryGrid = () => {
           expiryDate: new Date(Date.now() + Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
           batchNumber: item.product_code ? `P${item.product_code}` : `BAT${index}`,
           unitPrice: 0, // Not available in Inventory_2023 table
-          status: currentStock <= 0 ? 'critical_low' : 
-                  currentStock < minimumStock ? 'low_stock' : 'in_stock',
+          status: currentStock <= CRITICAL_STOCK ? 'critical_low' : 
+                  currentStock <= LOW_STOCK ? 'low_stock' : 'in_stock',
           location: `${String.fromCharCode(65 + (index % 3))}-${(index % 3) + 1}-${(index % 4) + 1}`
         };
       });

@@ -47,15 +47,19 @@ const DrugsTable = () => {
     }
   };
 
+  // Stock thresholds: Critical = 3 units, Low = 7 units
+  const CRITICAL_STOCK = 3;
+  const LOW_STOCK = 7;
+
   const getStockBadgeVariant = (stock: number | null) => {
-    if (stock === null || stock === 0) return 'destructive';
-    if (stock < 50) return 'secondary';
+    if (stock === null || stock <= CRITICAL_STOCK) return 'destructive';
+    if (stock <= LOW_STOCK) return 'secondary';
     return 'default';
   };
 
   const getStockLabel = (stock: number | null) => {
-    if (stock === null || stock === 0) return 'Out of Stock';
-    if (stock < 50) return 'Low Stock';
+    if (stock === null || stock <= CRITICAL_STOCK) return 'Critical Stock';
+    if (stock <= LOW_STOCK) return 'Low Stock';
     return 'In Stock';
   };
 
