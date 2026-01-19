@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.ml-demand-forecast]
 verify_jwt = false
+
+[functions.ai-demand-forecast]
+verify_jwt = false

@@ -123,79 +123,64 @@ const DemandForecastDashboard = () => {
     try {
       setGenerating(true);
       toast({
-        title: "Generating Forecast",
-        description: "AI is analyzing your transaction history...",
+        title: "Generating AI Forecast",
+        description: "Analyzing your sales_history_2023 data with Lovable AI...",
       });
 
-      // Call the ML demand forecast edge function
-      const { data, error } = await supabase.functions.invoke('ml-demand-forecast', {
-        body: { budget_egp: 50000, horizon_days: 30 }
+      // Call the new AI demand forecast edge function
+      const { data, error } = await supabase.functions.invoke('ai-demand-forecast', {
+        body: { horizon_days: 30, top_products: 50 }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        throw error;
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
       if (data?.predictions && data.predictions.length > 0) {
-        // Clear existing forecasts and insert new ones
-        await supabase.from('daily_forecasts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-
-        // Transform predictions to daily_forecasts format
-        const forecastRecords = data.predictions.map((prediction: any) => {
-          const currentStock = prediction.currentStock || 0;
-          const demand = prediction.predictedDemand?.medium || prediction.suggestedOrderQty || 0;
-          
-          let status = 'OK';
-          if (currentStock <= prediction.safetyStock) {
-            status = 'CRITICAL';
-          } else if (currentStock <= prediction.reorderPoint) {
-            status = 'LOW';
-          }
-
-          return {
-            product_code: parseInt(prediction.productId) || Math.floor(Math.random() * 100000),
-            product_name: prediction.drugName,
-            predicted_qty: demand,
-            suggested_order: prediction.suggestedOrderQty || 0,
-            status: status,
-            trend_data: [
-              prediction.predictedDemand?.low || 0,
-              prediction.predictedDemand?.medium || 0,
-              prediction.predictedDemand?.high || 0,
-              prediction.predictedDemand?.medium || 0,
-              prediction.predictedDemand?.low || 0
-            ]
-          };
-        });
-
-        const { error: insertError } = await supabase
-          .from('daily_forecasts')
-          .insert(forecastRecords);
-
-        if (insertError) {
-          console.error('Insert error:', insertError);
-          throw insertError;
-        }
-
+        const summary = data.summary;
+        
         toast({
-          title: "Forecast Generated",
-          description: `AI analyzed ${data.predictions.length} products. Budget used: ${data.budget?.budget_used_egp?.toLocaleString() || 0} EGP`,
+          title: "AI Forecast Complete",
+          description: `Analyzed ${summary?.data_source?.total_records?.toLocaleString() || 0} sales records across ${data.predictions.length} products. Found ${summary?.critical_items || 0} critical items.`,
         });
 
-        // Refresh the forecasts table
+        // Refresh the forecasts table (data is already saved by edge function)
         await fetchForecasts();
       } else {
         toast({
           title: "No Predictions",
-          description: "The AI model did not return any predictions. Make sure you have transaction history data.",
+          description: "The AI model did not return any predictions. Make sure you have transaction history data in sales_history_2023.",
           variant: "destructive",
         });
       }
     } catch (error: any) {
       console.error('Forecast generation error:', error);
-      toast({
-        title: "Forecast Failed",
-        description: error.message || "Failed to generate AI forecast",
-        variant: "destructive",
-      });
+      
+      // Handle specific error codes
+      if (error.message?.includes('Rate limit')) {
+        toast({
+          title: "Rate Limited",
+          description: "Too many requests. Please wait a moment and try again.",
+          variant: "destructive",
+        });
+      } else if (error.message?.includes('credits')) {
+        toast({
+          title: "AI Credits Exhausted",
+          description: "Please add more credits to your Lovable workspace.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Forecast Failed",
+          description: error.message || "Failed to generate AI forecast",
+          variant: "destructive",
+        });
+      }
     } finally {
       setGenerating(false);
     }
