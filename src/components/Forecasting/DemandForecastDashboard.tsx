@@ -29,6 +29,7 @@ import {
   DollarSign
 } from "lucide-react";
 import { LineChart, Line, ResponsiveContainer } from "recharts";
+import SalesHistoryImport from "./SalesHistoryImport";
 
 interface ForecastItem {
   id: string;
@@ -239,6 +240,9 @@ const DemandForecastDashboard = () => {
           </Button>
         )}
       </div>
+
+      {/* Sales History Import */}
+      <SalesHistoryImport onImportComplete={fetchForecasts} />
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

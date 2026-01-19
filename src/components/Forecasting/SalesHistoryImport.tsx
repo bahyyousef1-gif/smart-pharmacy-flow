@@ -14,7 +14,11 @@ interface SalesRecord {
   sale_date: string;
 }
 
-const SalesHistoryImport = () => {
+interface SalesHistoryImportProps {
+  onImportComplete?: () => void;
+}
+
+const SalesHistoryImport = ({ onImportComplete }: SalesHistoryImportProps) => {
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [recordCount, setRecordCount] = useState(0);
@@ -110,10 +114,11 @@ const SalesHistoryImport = () => {
         // Transform to sales_history_2023 format
         const transformedBatch = batch.map(record => ({
           Item_Name: record.drug_name,
+          Item_Code: 0, // Default to 0 if not available
           Net_Daily_Sales: record.quantity_sold,
           Daily_Revenue: record.total_revenue,
+          Unit_Price: record.unit_price,
           Date: record.sale_date,
-          Item_Code: null
         }));
         
         const { error } = await supabase.from('sales_history_2023').insert(transformedBatch);
@@ -131,6 +136,9 @@ const SalesHistoryImport = () => {
         title: "Import successful!",
         description: `${totalUploaded.toLocaleString()} transaction records imported for AI forecasting`,
       });
+      
+      // Notify parent component
+      onImportComplete?.();
 
     } catch (error: any) {
       console.error('Import error:', error);

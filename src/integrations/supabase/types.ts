@@ -121,25 +121,28 @@ export type Database = {
       }
       sales_history_2023: {
         Row: {
-          Daily_Revenue: number | null
-          Date: string | null
-          Item_Code: number | null
-          Item_Name: string | null
-          Net_Daily_Sales: number | null
+          Daily_Revenue: number
+          Date: string
+          Item_Code: number
+          Item_Name: string
+          Net_Daily_Sales: number
+          Unit_Price: number
         }
         Insert: {
-          Daily_Revenue?: number | null
-          Date?: string | null
-          Item_Code?: number | null
-          Item_Name?: string | null
-          Net_Daily_Sales?: number | null
+          Daily_Revenue: number
+          Date: string
+          Item_Code: number
+          Item_Name: string
+          Net_Daily_Sales: number
+          Unit_Price: number
         }
         Update: {
-          Daily_Revenue?: number | null
-          Date?: string | null
-          Item_Code?: number | null
-          Item_Name?: string | null
-          Net_Daily_Sales?: number | null
+          Daily_Revenue?: number
+          Date?: string
+          Item_Code?: number
+          Item_Name?: string
+          Net_Daily_Sales?: number
+          Unit_Price?: number
         }
         Relationships: []
       }
