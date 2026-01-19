@@ -25,12 +25,21 @@ const DrugSearch = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('Drugs dataset')
-        .select('*');
+        .from('Inventory_2023')
+        .select('name, product_code, stock_quantity');
 
       if (error) throw error;
 
-      setDrugs(data || []);
+      // Transform to expected format
+      const transformedData = (data || []).map(item => ({
+        name: item.name,
+        product_code: item.product_code,
+        stock: item.stock_quantity && item.stock_quantity > 0 ? 'In Stock' : 'Out of Stock',
+        price_EGP: 0,
+        price_USD: 0,
+        stock_quantity: item.stock_quantity
+      }));
+      setDrugs(transformedData);
     } catch (error) {
       console.error('Error fetching drugs:', error);
       toast({

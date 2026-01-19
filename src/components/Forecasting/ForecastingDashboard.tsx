@@ -123,16 +123,32 @@ const ForecastingDashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [drugsResult, salesResult] = await Promise.all([
-        supabase.from('Drugs dataset').select('*'),
-        supabase.from('sales_history').select('*').order('sale_date', { ascending: false }).limit(1000)
+      const [inventoryResult, salesResult] = await Promise.all([
+        supabase.from('Inventory_2023').select('*'),
+        supabase.from('sales_history_2023').select('*').order('Date', { ascending: false }).limit(1000)
       ]);
       
-      if (drugsResult.error) throw drugsResult.error;
+      if (inventoryResult.error) throw inventoryResult.error;
       if (salesResult.error) throw salesResult.error;
       
-      setDrugs(drugsResult.data || []);
-      setSalesHistory(salesResult.data || []);
+      // Transform inventory data to expected format
+      const drugsData = (inventoryResult.data || []).map(item => ({
+        name: item.name,
+        product_code: item.product_code,
+        stock_quantity: item.stock_quantity
+      }));
+      
+      // Transform sales data to expected format
+      const salesData = (salesResult.data || []).map(item => ({
+        drug_name: item.Item_Name,
+        quantity_sold: item.Net_Daily_Sales,
+        total_revenue: item.Daily_Revenue,
+        sale_date: item.Date,
+        item_code: item.Item_Code
+      }));
+      
+      setDrugs(drugsData);
+      setSalesHistory(salesData);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast({
