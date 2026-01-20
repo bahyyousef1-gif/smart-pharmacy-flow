@@ -633,7 +633,6 @@ export const DataIngestionPipeline = () => {
           <DataPreviewTable
             columns={parsedData.columns}
             rows={parsedData.rows}
-            maxRows={20}
           />
           <ColumnMapping
             columns={parsedData.columns}
@@ -648,6 +647,7 @@ export const DataIngestionPipeline = () => {
         <DataValidation
           isValidating={isValidating}
           validationResult={validationResult}
+          cleanedData={cleanedData}
           onProceed={handleGenerateForecast}
           onRetry={handleReset}
         />
