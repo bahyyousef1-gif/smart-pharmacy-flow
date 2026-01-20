@@ -6,7 +6,7 @@ import DragDropUpload, { UploadState } from "./DragDropUpload";
 import DataPreviewTable from "./DataPreviewTable";
 import ColumnMapping, { ColumnMappingConfig } from "./ColumnMapping";
 import DataValidation, { ValidationResult, ValidationError, ValidationWarning } from "./DataValidation";
-import ForecastInsights, { ForecastInsight, ForecastSummary } from "./ForecastInsights";
+import ForecastInsights, { ForecastInsight, ForecastSummary, ProductForecast } from "./ForecastInsights";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -75,6 +75,7 @@ export const DataIngestionPipeline = () => {
   const [forecastHorizon, setForecastHorizon] = useState<"7" | "30" | "90">("30");
   const [forecastSummary, setForecastSummary] = useState<ForecastSummary | null>(null);
   const [forecastInsights, setForecastInsights] = useState<ForecastInsight[]>([]);
+  const [forecastProducts, setForecastProducts] = useState<ProductForecast[]>([]);
 
   // Parse file
   const parseFile = useCallback(async (file: File): Promise<ParsedData> => {
@@ -164,6 +165,7 @@ export const DataIngestionPipeline = () => {
     setCleanedData([]);
     setForecastSummary(null);
     setForecastInsights([]);
+    setForecastProducts([]);
   }, []);
 
   // Parse flexible date
@@ -455,8 +457,64 @@ export const DataIngestionPipeline = () => {
         });
       }
       
+      // Build products list from predictions or cleaned data
+      const products: ProductForecast[] = [];
+      
+      if (data.predictions && data.predictions.length > 0) {
+        // Use AI predictions
+        data.predictions.forEach((p: any, idx: number) => {
+          products.push({
+            id: p.id || `pred-${idx}`,
+            product_name: p.product_name || p.Item_Name || `Product ${idx + 1}`,
+            product_code: p.product_code || p.Item_Code || idx,
+            current_stock: p.current_stock || 0,
+            predicted_qty: p.predicted_qty || p.demand_forecast || 0,
+            suggested_order: p.suggested_order || p.suggested_order_qty || 0,
+            status: p.status || "OK",
+            trend: p.trend_direction === "increasing" ? "up" : p.trend_direction === "decreasing" ? "down" : "stable",
+            trend_data: Array.isArray(p.trend_data) ? p.trend_data : [],
+          });
+        });
+      } else {
+        // Fallback: generate from cleaned data
+        const productMap = new Map<string, { qty: number; days: number[] }>();
+        cleanedData.forEach((row) => {
+          const name = String(row.Item_Name || row.Item_Code);
+          const qty = parseFloat(String(row.Net_Daily_Sales)) || 0;
+          if (!productMap.has(name)) {
+            productMap.set(name, { qty: 0, days: [] });
+          }
+          const entry = productMap.get(name)!;
+          entry.qty += qty;
+          entry.days.push(qty);
+        });
+        
+        let idx = 0;
+        productMap.forEach((data, name) => {
+          const avgDaily = data.qty / (data.days.length || 1);
+          const predicted = Math.round(avgDaily * parseInt(forecastHorizon));
+          const suggested = Math.max(0, predicted);
+          const status: "CRITICAL" | "LOW" | "OK" = 
+            avgDaily > 10 ? "CRITICAL" : avgDaily > 5 ? "LOW" : "OK";
+          
+          products.push({
+            id: `product-${idx}`,
+            product_name: name,
+            product_code: idx,
+            current_stock: 0,
+            predicted_qty: predicted,
+            suggested_order: suggested,
+            status,
+            trend: "stable",
+            trend_data: data.days.slice(-7),
+          });
+          idx++;
+        });
+      }
+      
       setForecastSummary(summary);
       setForecastInsights(insights);
+      setForecastProducts(products);
       setCurrentStep("results");
       
       toast({
@@ -635,6 +693,7 @@ export const DataIngestionPipeline = () => {
           <ForecastInsights
             summary={forecastSummary}
             insights={forecastInsights}
+            products={forecastProducts}
             onDownloadReport={handleDownloadReport}
             onViewDetails={() => {
               // Navigate to demand forecast dashboard
