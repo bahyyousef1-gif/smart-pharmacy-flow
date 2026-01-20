@@ -2,6 +2,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   CheckCircle2,
   AlertCircle,
@@ -13,6 +22,7 @@ import {
   Hash,
   Package,
   TrendingUp,
+  TableIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +55,7 @@ export interface ValidationWarning {
 interface DataValidationProps {
   isValidating: boolean;
   validationResult: ValidationResult | null;
+  cleanedData?: Record<string, unknown>[];
   onProceed: () => void;
   onRetry: () => void;
 }
@@ -52,6 +63,7 @@ interface DataValidationProps {
 export const DataValidation = ({
   isValidating,
   validationResult,
+  cleanedData = [],
   onProceed,
   onRetry,
 }: DataValidationProps) => {
@@ -218,6 +230,53 @@ export const DataValidation = ({
                 <li>• Handled {validationResult.missingValuesHandled} missing values</li>
               )}
             </ul>
+          </div>
+        )}
+
+        {/* Cleaned Data Table */}
+        {cleanedData.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold flex items-center gap-2">
+                <TableIcon className="h-4 w-4 text-primary" />
+                Validated Data ({cleanedData.length} rows)
+              </h4>
+            </div>
+            <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+              <div className="max-h-[400px] overflow-y-auto">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableRow>
+                      <TableHead className="w-[50px] text-center">#</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Item Code</TableHead>
+                      <TableHead>Item Name</TableHead>
+                      <TableHead className="text-right">Quantity Sold</TableHead>
+                      {cleanedData[0]?.Unit_Price !== undefined && (
+                        <TableHead className="text-right">Unit Price</TableHead>
+                      )}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cleanedData.map((row, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="text-center text-muted-foreground font-mono text-xs">
+                          {idx + 1}
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">{String(row.Date)}</TableCell>
+                        <TableCell className="font-mono text-sm">{String(row.Item_Code)}</TableCell>
+                        <TableCell className="font-medium">{String(row.Item_Name)}</TableCell>
+                        <TableCell className="text-right font-mono">{String(row.Net_Daily_Sales)}</TableCell>
+                        {row.Unit_Price !== undefined && (
+                          <TableCell className="text-right font-mono">{String(row.Unit_Price)}</TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           </div>
         )}
 

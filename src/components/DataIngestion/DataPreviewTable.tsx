@@ -17,9 +17,10 @@ interface DataPreviewTableProps {
   maxRows?: number;
 }
 
-export const DataPreviewTable = ({ columns, rows, maxRows = 20 }: DataPreviewTableProps) => {
-  const displayRows = rows.slice(0, maxRows);
-  const hasMore = rows.length > maxRows;
+export const DataPreviewTable = ({ columns, rows, maxRows }: DataPreviewTableProps) => {
+  // If maxRows is provided, limit the display; otherwise show all rows
+  const displayRows = maxRows ? rows.slice(0, maxRows) : rows;
+  const hasMore = maxRows ? rows.length > maxRows : false;
 
   return (
     <Card>
@@ -35,13 +36,16 @@ export const DataPreviewTable = ({ columns, rows, maxRows = 20 }: DataPreviewTab
           </div>
         </div>
         <CardDescription>
-          Showing first {displayRows.length} of {rows.length} rows
-          {hasMore && " • Scroll to see more columns"}
+          {hasMore 
+            ? `Showing first ${displayRows.length} of ${rows.length} rows`
+            : `Showing all ${rows.length} rows`
+          }
+          {" • Scroll to see more"}
         </CardDescription>
       </CardHeader>
       <CardContent>
         <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-          <div className="max-h-[400px] overflow-y-auto">
+          <div className="max-h-[500px] overflow-y-auto">
             <Table>
               <TableHeader className="sticky top-0 bg-background z-10">
                 <TableRow>

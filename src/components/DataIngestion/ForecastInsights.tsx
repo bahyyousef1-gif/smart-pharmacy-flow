@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -279,81 +280,88 @@ export const ForecastInsights = ({
               <p>No products match the selected filter</p>
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="font-semibold">Product Name</TableHead>
-                    <TableHead className="text-center">Current Stock</TableHead>
-                    <TableHead className="text-center">Daily</TableHead>
-                    <TableHead className="text-center">7-Day</TableHead>
-                    <TableHead className="text-center">30-Day</TableHead>
-                    <TableHead className="text-center">Trend</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-center">Suggested Order</TableHead>
-                    <TableHead className="text-center">Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedProducts.map((product) => {
-                    const dailyForecast = Math.round(product.predicted_qty / 30);
-                    const weeklyForecast = Math.round((product.predicted_qty / 30) * 7);
-                    return (
-                      <TableRow key={product.id}>
-                        <TableCell className="font-bold">
-                          {product.product_name}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {product.current_stock?.toLocaleString() || 0}
-                        </TableCell>
-                        <TableCell className="text-center text-muted-foreground">
-                          {dailyForecast}
-                        </TableCell>
-                        <TableCell className="text-center text-muted-foreground">
-                          {weeklyForecast}
-                        </TableCell>
-                        <TableCell className="text-center font-medium">
-                          {product.predicted_qty}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            {product.trend_data && product.trend_data.length > 0 && (
-                              <SparklineChart data={product.trend_data} />
-                            )}
-                            {getTrendIcon(product.trend)}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {getStatusBadge(product.status)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Input
-                            type="number"
-                            min={0}
-                            className="w-20 mx-auto text-center"
-                            value={getEffectiveQuantity(product)}
-                            onChange={(e) =>
-                              handleQuantityChange(product.id, e.target.value)
-                            }
-                          />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => addToOrderList(product)}
-                            className="gap-1"
-                          >
-                            <Plus className="h-3 w-3" />
-                            Add to Order
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+            <ScrollArea className="w-full whitespace-nowrap rounded-md border">
+              <div className="max-h-[500px] overflow-y-auto">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-background z-10">
+                    <TableRow>
+                      <TableHead className="w-[50px] text-center">#</TableHead>
+                      <TableHead className="font-semibold">Product Name</TableHead>
+                      <TableHead className="text-center">Current Stock</TableHead>
+                      <TableHead className="text-center">Daily</TableHead>
+                      <TableHead className="text-center">7-Day</TableHead>
+                      <TableHead className="text-center">30-Day</TableHead>
+                      <TableHead className="text-center">Trend</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-center">Suggested Order</TableHead>
+                      <TableHead className="text-center">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedProducts.map((product, index) => {
+                      const dailyForecast = Math.round(product.predicted_qty / 30);
+                      const weeklyForecast = Math.round((product.predicted_qty / 30) * 7);
+                      return (
+                        <TableRow key={product.id}>
+                          <TableCell className="text-center text-muted-foreground font-mono text-xs">
+                            {index + 1}
+                          </TableCell>
+                          <TableCell className="font-bold">
+                            {product.product_name}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {product.current_stock?.toLocaleString() || 0}
+                          </TableCell>
+                          <TableCell className="text-center text-muted-foreground">
+                            {dailyForecast}
+                          </TableCell>
+                          <TableCell className="text-center text-muted-foreground">
+                            {weeklyForecast}
+                          </TableCell>
+                          <TableCell className="text-center font-medium">
+                            {product.predicted_qty}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              {product.trend_data && product.trend_data.length > 0 && (
+                                <SparklineChart data={product.trend_data} />
+                              )}
+                              {getTrendIcon(product.trend)}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {getStatusBadge(product.status)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Input
+                              type="number"
+                              min={0}
+                              className="w-20 mx-auto text-center"
+                              value={getEffectiveQuantity(product)}
+                              onChange={(e) =>
+                                handleQuantityChange(product.id, e.target.value)
+                              }
+                            />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => addToOrderList(product)}
+                              className="gap-1"
+                            >
+                              <Plus className="h-3 w-3" />
+                              Add to Order
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           )}
         </CardContent>
       </Card>
