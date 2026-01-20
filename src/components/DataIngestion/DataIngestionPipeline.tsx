@@ -59,6 +59,7 @@ export const DataIngestionPipeline = () => {
   const [columnMapping, setColumnMapping] = useState<ColumnMappingConfig>({
     date: null,
     productSku: null,
+    productName: null,
     quantitySold: null,
     stock: null,
     price: null,
@@ -292,11 +293,15 @@ export const DataIngestionPipeline = () => {
       // Track unique products
       uniqueProductSet.add(String(productVal));
       
-      // Build cleaned row
+      // Build cleaned row - use productName if mapped, otherwise fall back to productSku
+      const productName = columnMapping.productName 
+        ? String(row[columnMapping.productName] || productVal)
+        : String(productVal);
+      
       const cleanedRow: Record<string, unknown> = {
         Date: dateVal,
         Item_Code: productVal,
-        Item_Name: productVal,
+        Item_Name: productName,
         Net_Daily_Sales: quantity,
       };
       
