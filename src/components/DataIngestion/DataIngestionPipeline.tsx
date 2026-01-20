@@ -392,11 +392,19 @@ export const DataIngestionPipeline = () => {
         description: `Analyzing ${cleanedData.length} records for ${parseInt(forecastHorizon)}-day predictions...`,
       });
       
-      // Call the AI demand forecast edge function
+      // Get all unique products from cleaned data
+      const allProductNames = new Set<string>();
+      cleanedData.forEach((row) => {
+        const name = String(row.Item_Name || row.Item_Code);
+        allProductNames.add(name);
+      });
+      const totalProductCount = allProductNames.size;
+      
+      // Call the AI demand forecast edge function with all products
       const { data, error } = await supabase.functions.invoke("ai-demand-forecast", {
         body: {
           horizon_days: parseInt(forecastHorizon),
-          top_products: 50,
+          top_products: totalProductCount, // Request ALL products
           custom_data: cleanedData,
         },
       });
@@ -457,60 +465,81 @@ export const DataIngestionPipeline = () => {
         });
       }
       
-      // Build products list from predictions or cleaned data
-      const products: ProductForecast[] = [];
+      // Build products list from ALL products in cleaned data
+      // First, aggregate all products from the uploaded data
+      const productMap = new Map<string, { 
+        qty: number; 
+        days: number[]; 
+        code: string | number;
+        aiPrediction?: any;
+      }>();
       
+      cleanedData.forEach((row) => {
+        const name = String(row.Item_Name || row.Item_Code);
+        const code = row.Item_Code;
+        const qty = parseFloat(String(row.Net_Daily_Sales)) || 0;
+        if (!productMap.has(name)) {
+          productMap.set(name, { qty: 0, days: [], code: code as string | number });
+        }
+        const entry = productMap.get(name)!;
+        entry.qty += qty;
+        entry.days.push(qty);
+      });
+      
+      // Match AI predictions to products if available
       if (data.predictions && data.predictions.length > 0) {
-        // Use AI predictions
-        data.predictions.forEach((p: any, idx: number) => {
-          products.push({
-            id: p.id || `pred-${idx}`,
-            product_name: p.product_name || p.Item_Name || `Product ${idx + 1}`,
-            product_code: p.product_code || p.Item_Code || idx,
-            current_stock: p.current_stock || 0,
-            predicted_qty: p.predicted_qty || p.demand_forecast || 0,
-            suggested_order: p.suggested_order || p.suggested_order_qty || 0,
-            status: p.status || "OK",
-            trend: p.trend_direction === "increasing" ? "up" : p.trend_direction === "decreasing" ? "down" : "stable",
-            trend_data: Array.isArray(p.trend_data) ? p.trend_data : [],
-          });
-        });
-      } else {
-        // Fallback: generate from cleaned data
-        const productMap = new Map<string, { qty: number; days: number[] }>();
-        cleanedData.forEach((row) => {
-          const name = String(row.Item_Name || row.Item_Code);
-          const qty = parseFloat(String(row.Net_Daily_Sales)) || 0;
-          if (!productMap.has(name)) {
-            productMap.set(name, { qty: 0, days: [] });
+        data.predictions.forEach((p: any) => {
+          const name = p.product_name || p.Item_Name;
+          if (name && productMap.has(name)) {
+            productMap.get(name)!.aiPrediction = p;
           }
-          const entry = productMap.get(name)!;
-          entry.qty += qty;
-          entry.days.push(qty);
-        });
-        
-        let idx = 0;
-        productMap.forEach((data, name) => {
-          const avgDaily = data.qty / (data.days.length || 1);
-          const predicted = Math.round(avgDaily * parseInt(forecastHorizon));
-          const suggested = Math.max(0, predicted);
-          const status: "CRITICAL" | "LOW" | "OK" = 
-            avgDaily > 10 ? "CRITICAL" : avgDaily > 5 ? "LOW" : "OK";
-          
-          products.push({
-            id: `product-${idx}`,
-            product_name: name,
-            product_code: idx,
-            current_stock: 0,
-            predicted_qty: predicted,
-            suggested_order: suggested,
-            status,
-            trend: "stable",
-            trend_data: data.days.slice(-7),
-          });
-          idx++;
         });
       }
+      
+      // Generate forecast for ALL products
+      const products: ProductForecast[] = [];
+      let idx = 0;
+      
+      productMap.forEach((productData, name) => {
+        const avgDaily = productData.qty / (productData.days.length || 1);
+        const ai = productData.aiPrediction;
+        
+        // Use AI prediction if available, otherwise calculate from data
+        const predictedQty = ai?.predicted_qty || ai?.demand_forecast || Math.round(avgDaily * parseInt(forecastHorizon));
+        const suggestedOrder = ai?.suggested_order || ai?.suggested_order_qty || Math.max(0, predictedQty);
+        const currentStock = ai?.current_stock || 0;
+        
+        // Determine status based on average daily sales
+        let status: "CRITICAL" | "LOW" | "OK" = ai?.status || "OK";
+        if (!ai?.status) {
+          if (avgDaily > 10) status = "CRITICAL";
+          else if (avgDaily > 5) status = "LOW";
+        }
+        
+        // Determine trend
+        let trend: "up" | "down" | "stable" = "stable";
+        if (ai?.trend_direction === "increasing") trend = "up";
+        else if (ai?.trend_direction === "decreasing") trend = "down";
+        else if (productData.days.length >= 3) {
+          const recentAvg = productData.days.slice(-3).reduce((a, b) => a + b, 0) / 3;
+          const earlierAvg = productData.days.slice(0, 3).reduce((a, b) => a + b, 0) / Math.min(3, productData.days.length);
+          if (recentAvg > earlierAvg * 1.1) trend = "up";
+          else if (recentAvg < earlierAvg * 0.9) trend = "down";
+        }
+        
+        products.push({
+          id: ai?.id || `product-${idx}`,
+          product_name: name,
+          product_code: productData.code || idx,
+          current_stock: currentStock,
+          predicted_qty: predictedQty,
+          suggested_order: suggestedOrder,
+          status,
+          trend,
+          trend_data: Array.isArray(ai?.trend_data) ? ai.trend_data : productData.days.slice(-7),
+        });
+        idx++;
+      });
       
       setForecastSummary(summary);
       setForecastInsights(insights);
