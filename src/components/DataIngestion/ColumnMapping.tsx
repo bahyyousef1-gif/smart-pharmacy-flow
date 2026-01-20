@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 export interface ColumnMappingConfig {
   date: string | null;
   productSku: string | null;
+  productName?: string | null;
   quantitySold: string | null;
   stock?: string | null;
   price?: string | null;
@@ -30,11 +31,12 @@ interface ColumnMappingProps {
 
 const REQUIRED_FIELDS = [
   { key: "date", label: "Date", description: "Transaction or sale date", patterns: ["date", "time", "day", "fecha"] },
-  { key: "productSku", label: "Product / SKU", description: "Product identifier or name", patterns: ["item", "product", "sku", "code", "name", "drug", "medicine", "producto"] },
+  { key: "productSku", label: "Product Code / SKU", description: "Product identifier or code number", patterns: ["code", "sku", "item_code", "product_code", "codigo"] },
   { key: "quantitySold", label: "Quantity Sold", description: "Units sold or consumed", patterns: ["qty", "quantity", "sales", "sold", "units", "amount", "net"] },
 ];
 
 const OPTIONAL_FIELDS = [
+  { key: "productName", label: "Product Name", description: "Product or item name", patterns: ["name", "item_name", "product_name", "drug", "medicine", "producto", "nombre"] },
   { key: "stock", label: "Stock Level", description: "Current inventory quantity", patterns: ["stock", "inventory", "available", "on_hand"] },
   { key: "price", label: "Unit Price", description: "Price per unit", patterns: ["price", "cost", "unit_price", "precio"] },
   { key: "supplier", label: "Supplier", description: "Vendor or supplier name", patterns: ["supplier", "vendor", "distributor", "proveedor"] },
