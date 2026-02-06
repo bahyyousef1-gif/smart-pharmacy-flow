@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState("inventory");
 
   const renderContent = () => {
     switch (activeTab) {

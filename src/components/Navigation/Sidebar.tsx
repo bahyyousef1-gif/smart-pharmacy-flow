@@ -23,12 +23,6 @@ interface SidebarProps {
 const Sidebar = ({ activeTab, onTabChange }: SidebarProps) => {
   const navigation = [
     {
-      id: "dashboard",
-      name: "Dashboard",
-      icon: LayoutDashboard,
-      badge: null
-    },
-    {
       id: "inventory",
       name: "Inventory",
       icon: Package,
@@ -41,34 +35,10 @@ const Sidebar = ({ activeTab, onTabChange }: SidebarProps) => {
       badge: "8"
     },
     {
-      id: "forecasting",
-      name: "Forecasting",
-      icon: BarChart3,
-      badge: null
-    },
-    {
       id: "demand-forecast",
       name: "Demand Forecast",
       icon: TrendingUp,
       badge: "NEW"
-    },
-    {
-      id: "p2p-orders",
-      name: "P2P Orders",
-      icon: Users,
-      badge: "3"
-    },
-    {
-      id: "insurance",
-      name: "Insurance",
-      icon: FileText,
-      badge: "12"
-    },
-    {
-      id: "alerts",
-      name: "Alerts",
-      icon: Bell,
-      badge: "5"
     },
     {
       id: "suppliers",
