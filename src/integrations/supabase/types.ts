@@ -94,28 +94,49 @@ export type Database = {
       }
       Inventory_2023: {
         Row: {
+          dosage_form: string | null
+          expiry_date: string | null
+          generic_name: string | null
           max_stock: number | null
           min_stock: number | null
           name: string | null
-          price: number | null
           product_code: number | null
+          purchase_price: number | null
+          selling_price: number | null
           stock_quantity: number | null
+          strength: string | null
+          supplier: string | null
+          user_id: string | null
         }
         Insert: {
+          dosage_form?: string | null
+          expiry_date?: string | null
+          generic_name?: string | null
           max_stock?: number | null
           min_stock?: number | null
           name?: string | null
-          price?: number | null
           product_code?: number | null
+          purchase_price?: number | null
+          selling_price?: number | null
           stock_quantity?: number | null
+          strength?: string | null
+          supplier?: string | null
+          user_id?: string | null
         }
         Update: {
+          dosage_form?: string | null
+          expiry_date?: string | null
+          generic_name?: string | null
           max_stock?: number | null
           min_stock?: number | null
           name?: string | null
-          price?: number | null
           product_code?: number | null
+          purchase_price?: number | null
+          selling_price?: number | null
           stock_quantity?: number | null
+          strength?: string | null
+          supplier?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
