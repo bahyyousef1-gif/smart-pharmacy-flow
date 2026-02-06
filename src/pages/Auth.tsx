@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Pill, Shield, Eye, EyeOff } from "lucide-react";
+import { Loader2, Pill, Shield, Eye, EyeOff, Mail } from "lucide-react";
 import { z } from "zod";
 
 const signUpSchema = z.object({
@@ -33,6 +33,7 @@ const Auth = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("login");
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -204,6 +205,44 @@ const Auth = () => {
     }
   };
 
+  const handleResendVerification = async () => {
+    const emailOrPhone = loginForm.emailOrPhone.trim().toLowerCase();
+    
+    if (!emailOrPhone || !emailOrPhone.includes("@")) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setResendLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: emailOrPhone,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Verification email sent!",
+        description: "Please check your inbox and click the verification link.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to resend",
+        description: error.message || "Could not resend verification email.",
+        variant: "destructive",
+      });
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -298,6 +337,26 @@ const Auth = () => {
                       </>
                     ) : (
                       "Log In"
+                    )}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleResendVerification}
+                    disabled={resendLoading}
+                  >
+                    {resendLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="mr-2 h-4 w-4" />
+                        Resend verification email
+                      </>
                     )}
                   </Button>
                 </form>
