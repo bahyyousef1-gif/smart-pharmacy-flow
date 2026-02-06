@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Pill, Shield, Eye, EyeOff } from "lucide-react";
+import { Loader2, Pill, Shield, Eye, EyeOff, Mail } from "lucide-react";
 import { z } from "zod";
 
 const signUpSchema = z.object({
