@@ -33,6 +33,7 @@ const Auth = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("login");
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
