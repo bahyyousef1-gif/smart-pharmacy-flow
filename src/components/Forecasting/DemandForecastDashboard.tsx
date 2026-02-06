@@ -306,30 +306,10 @@ const DemandForecastDashboard = () => {
             AI-powered inventory replenishment recommendations
           </p>
         </div>
-        {orderList.length > 0 && (
-          <Button className="gap-2">
-            <ShoppingCart className="h-4 w-4" />
-            View Order List ({orderList.length})
-          </Button>
-        )}
       </div>
 
-      {/* Tabs for Dashboard vs Upload */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "dashboard" | "upload")}>
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="dashboard" className="gap-2">
-            <Brain className="h-4 w-4" />
-            Forecasts
-          </TabsTrigger>
-          <TabsTrigger value="upload" className="gap-2">
-            <Upload className="h-4 w-4" />
-            Upload Data
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="upload" className="mt-6">
-          <DataIngestionPipeline />
-        </TabsContent>
+      {/* Data Ingestion Pipeline */}
+      <DataIngestionPipeline />
 
         <TabsContent value="dashboard" className="mt-6 space-y-6">
           {/* Forecast Generation */}
