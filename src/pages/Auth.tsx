@@ -161,11 +161,12 @@ const Auth = () => {
 
     setLoading(true);
     try {
-      // Determine if input is email or phone
-      const isEmail = loginForm.emailOrPhone.includes("@");
+      // Determine if input is email or phone - trim whitespace
+      const emailOrPhone = loginForm.emailOrPhone.trim().toLowerCase();
+      const isEmail = emailOrPhone.includes("@");
       
       const { error } = await supabase.auth.signInWithPassword({
-        email: isEmail ? loginForm.emailOrPhone : `${loginForm.emailOrPhone}@phone.placeholder`,
+        email: isEmail ? emailOrPhone : `${emailOrPhone}@phone.placeholder`,
         password: loginForm.password,
       });
 
