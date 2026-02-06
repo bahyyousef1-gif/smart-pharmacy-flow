@@ -339,6 +339,26 @@ const Auth = () => {
                       "Log In"
                     )}
                   </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleResendVerification}
+                    disabled={resendLoading}
+                  >
+                    {resendLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Mail className="mr-2 h-4 w-4" />
+                        Resend verification email
+                      </>
+                    )}
+                  </Button>
                 </form>
               </TabsContent>
 
