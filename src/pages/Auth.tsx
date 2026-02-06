@@ -205,6 +205,44 @@ const Auth = () => {
     }
   };
 
+  const handleResendVerification = async () => {
+    const emailOrPhone = loginForm.emailOrPhone.trim().toLowerCase();
+    
+    if (!emailOrPhone || !emailOrPhone.includes("@")) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setResendLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: emailOrPhone,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      toast({
+        title: "Verification email sent!",
+        description: "Please check your inbox and click the verification link.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Failed to resend",
+        description: error.message || "Could not resend verification email.",
+        variant: "destructive",
+      });
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
