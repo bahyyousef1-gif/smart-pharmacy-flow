@@ -1,68 +1,8 @@
-import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { 
-  ShoppingCart, 
-  TrendingUp, 
-  AlertTriangle, 
-  Plus,
-  Package,
-  DollarSign,
-  Brain,
-  Loader2,
-  Upload
-} from "lucide-react";
-import { LineChart, Line, ResponsiveContainer } from "recharts";
+import { Upload } from "lucide-react";
 import DataIngestionPipeline from "@/components/DataIngestion/DataIngestionPipeline";
 
-interface ForecastItem {
-  id: string;
-  product_code: number;
-  product_name: string;
-  predicted_qty: number;
-  suggested_order: number;
-  status: "CRITICAL" | "LOW" | "OK";
-  trend_data: number[];
-  current_stock?: number;
-  price?: number;
-}
-
-interface OrderItem {
-  product_code: number;
-  product_name: string;
-  suggested_order: number;
-  price: number;
-}
-
 const DemandForecastDashboard = () => {
-  const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<"dashboard" | "upload">("dashboard");
-  const [forecasts, setForecasts] = useState<ForecastItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>("CRITICAL");
-  const [orderList, setOrderList] = useState<OrderItem[]>([]);
-  const [editedQuantities, setEditedQuantities] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetchForecasts();
