@@ -11,7 +11,8 @@ import {
   Users,
   FileText,
   Bell,
-  TrendingUp
+  TrendingUp,
+  ArrowLeftRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +39,12 @@ const Sidebar = ({ activeTab, onTabChange }: SidebarProps) => {
       id: "demand-forecast",
       name: "Demand Forecast",
       icon: TrendingUp,
+      badge: "NEW"
+    },
+    {
+      id: "p2p",
+      name: "P2P Orders",
+      icon: ArrowLeftRight,
       badge: "NEW"
     },
     {

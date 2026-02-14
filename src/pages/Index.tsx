@@ -5,6 +5,7 @@ import Sidebar from "@/components/Navigation/Sidebar";
 import PharmacyInventory from "@/components/Pharmacy/PharmacyInventory";
 import SmartOrdering from "@/components/Orders/SmartOrdering";
 import DemandForecastDashboard from "@/components/Forecasting/DemandForecastDashboard";
+import P2POrderingModule from "@/components/P2P/P2POrderingModule";
 import { Truck, HelpCircle } from "lucide-react";
 
 const Index = () => {
@@ -18,6 +19,8 @@ const Index = () => {
         return <SmartOrdering />;
       case "demand-forecast":
         return <DemandForecastDashboard />;
+      case "p2p":
+        return <P2POrderingModule />;
       case "suppliers":
         return <SuppliersView />;
       case "help":
