@@ -8,6 +8,3 @@ verify_jwt = false
 
 [functions.ai-demand-forecast]
 verify_jwt = false
-
-[functions.pharmacy-forecast]
-verify_jwt = false
