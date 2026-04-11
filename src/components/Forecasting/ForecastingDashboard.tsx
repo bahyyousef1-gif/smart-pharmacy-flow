@@ -376,6 +376,22 @@ const ForecastingDashboard = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {/* Budget Input */}
+          <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-1.5 border">
+            <DollarSign className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-muted-foreground">Budget:</span>
+            <Input 
+              type="number" 
+              value={budget}
+              onChange={(e) => setBudget(Number(e.target.value))}
+              className="w-[120px] h-8 text-sm"
+              min={0}
+              step={1000}
+              placeholder="EGP"
+            />
+            <span className="text-xs text-muted-foreground">EGP</span>
+          </div>
+
           <Select value={forecastHorizon.toString()} onValueChange={(v) => setForecastHorizon(parseInt(v))}>
             <SelectTrigger className="w-[140px]">
               <SelectValue />
