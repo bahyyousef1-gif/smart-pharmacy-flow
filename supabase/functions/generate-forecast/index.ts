@@ -8,8 +8,9 @@ const corsHeaders = {
 };
 
 interface ForecastRequest {
-  forecastHorizon?: number; // days
-  topProducts?: number; // limit products to analyze
+  forecastHorizon?: number;
+  topProducts?: number;
+  budget_egp?: number;
 }
 
 interface ProductForecast {
@@ -26,6 +27,8 @@ interface ProductForecast {
   reorderPoint: number;
   suggestedOrderQty: number;
   daysUntilStockout: number;
+  estimatedCost?: number;
+  reason?: string;
 }
 
 interface ForecastResponse {
@@ -34,6 +37,15 @@ interface ForecastResponse {
   seasonalPatterns: string;
   riskAnalysis: string;
   timestamp: string;
+  budget?: {
+    budget_egp: number;
+    budget_used_egp: number;
+    budget_remaining_egp: number;
+  };
+  settings?: {
+    budget_egp: number;
+    horizon_days: number;
+  };
 }
 
 serve(async (req) => {
@@ -51,7 +63,6 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Parse request body
     let requestBody: ForecastRequest = {};
     try {
       requestBody = await req.json();
@@ -61,8 +72,9 @@ serve(async (req) => {
 
     const forecastHorizon = requestBody.forecastHorizon || 90;
     const topProducts = requestBody.topProducts || 20;
+    const budget_egp = requestBody.budget_egp || 0; // 0 means no budget constraint
 
-    console.log(`Generating forecast for ${forecastHorizon} days, top ${topProducts} products`);
+    console.log(`Generating forecast for ${forecastHorizon} days, top ${topProducts} products, budget: ${budget_egp} EGP`);
 
     // Fetch sales history data
     const { data: salesHistory, error: salesError } = await supabase
@@ -109,7 +121,6 @@ serve(async (req) => {
       .sort((a, b) => b[1].totalQty - a[1].totalQty)
       .slice(0, topProducts)
       .map(([name, data]) => {
-        // Calculate date range and monthly average
         const dates = data.dates.sort();
         const firstDate = dates[0] ? new Date(dates[0]) : new Date();
         const lastDate = dates[dates.length - 1] ? new Date(dates[dates.length - 1]) : new Date();
@@ -124,7 +135,7 @@ serve(async (req) => {
         };
       });
 
-    // Match with current stock
+    // Match with current stock and price
     const productSummary = topSellingProducts.map(product => {
       const matchingDrug = drugs?.find(d => 
         d.name?.toLowerCase().trim() === product.name ||
@@ -146,12 +157,22 @@ serve(async (req) => {
         from: salesHistory[salesHistory.length - 1]?.sale_date,
         to: salesHistory[0]?.sale_date
       } : null,
-      topProducts: productSummary
+      topProducts: productSummary,
+      budget_constraint_egp: budget_egp > 0 ? budget_egp : null
     };
+
+    const budgetPrompt = budget_egp > 0
+      ? `\n\nIMPORTANT BUDGET CONSTRAINT: The pharmacy has a budget of ${budget_egp} EGP. You MUST:
+1. Calculate estimated cost for each product (suggestedOrderQty × unit price in EGP)
+2. Prioritize essential/critical items first (low daysUntilStockout)
+3. Ensure total suggested orders do NOT exceed ${budget_egp} EGP
+4. If budget is insufficient, reduce order quantities for lower-priority items
+5. Include the estimated cost per product in your response
+6. Add a reason for each product explaining the order priority`
+      : '';
 
     console.log('Calling OpenAI API with structured tool calling...');
 
-    // Use tool calling for structured output
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -171,8 +192,9 @@ Consider:
 - Seasonality patterns in pharmaceutical demand
 - Stock levels vs demand rates
 - Reorder points based on lead time assumptions (7 days)
+- Product unit prices in EGP (Egyptian Pounds) for cost estimation
 
-For each product, predict demand for the next ${forecastHorizon} days with low/medium/high scenarios.`
+For each product, predict demand for the next ${forecastHorizon} days with low/medium/high scenarios.${budgetPrompt}`
           },
           {
             role: 'user',
@@ -185,8 +207,10 @@ Generate predictions for each product including:
 2. Trend direction (increasing/stable/decreasing)
 3. Confidence level (0-1)
 4. Reorder point (when to reorder)
-5. Suggested order quantity
-6. Days until stockout at current rate`
+5. Suggested order quantity${budget_egp > 0 ? ` (within total budget of ${budget_egp} EGP)` : ''}
+6. Days until stockout at current rate
+7. Estimated cost in EGP (suggestedOrderQty × unit price)
+8. Reason/justification for the order recommendation`
           }
         ],
         tools: [
@@ -194,7 +218,7 @@ Generate predictions for each product including:
             type: 'function',
             function: {
               name: 'generate_demand_forecast',
-              description: 'Generate structured demand forecasts for pharmacy products',
+              description: 'Generate structured demand forecasts for pharmacy products with budget constraints',
               parameters: {
                 type: 'object',
                 properties: {
@@ -222,9 +246,11 @@ Generate predictions for each product including:
                         confidence: { type: 'number' },
                         reorderPoint: { type: 'number' },
                         suggestedOrderQty: { type: 'number' },
-                        daysUntilStockout: { type: 'number' }
+                        daysUntilStockout: { type: 'number' },
+                        estimatedCost: { type: 'number', description: 'Estimated cost in EGP for the suggested order' },
+                        reason: { type: 'string', description: 'Justification for order priority and quantity' }
                       },
-                      required: ['drugName', 'currentStock', 'avgMonthlySales', 'predictedDemand', 'trend', 'confidence', 'reorderPoint', 'suggestedOrderQty', 'daysUntilStockout']
+                      required: ['drugName', 'currentStock', 'avgMonthlySales', 'predictedDemand', 'trend', 'confidence', 'reorderPoint', 'suggestedOrderQty', 'daysUntilStockout', 'estimatedCost', 'reason']
                     }
                   },
                   overallInsights: { type: 'string' },
@@ -251,42 +277,149 @@ Generate predictions for each product including:
     const data = await response.json();
     console.log('AI response received');
 
-    // Extract structured forecast from tool call
     let forecastResult: ForecastResponse;
     
     if (data.choices[0]?.message?.tool_calls?.[0]?.function?.arguments) {
       const args = JSON.parse(data.choices[0].message.tool_calls[0].function.arguments);
-      forecastResult = {
-        predictions: args.predictions || [],
-        overallInsights: args.overallInsights || '',
-        seasonalPatterns: args.seasonalPatterns || '',
-        riskAnalysis: args.riskAnalysis || '',
-        timestamp: new Date().toISOString()
-      };
+      
+      let predictions: ProductForecast[] = args.predictions || [];
+
+      // Apply budget constraint post-processing if budget is set
+      if (budget_egp > 0) {
+        // Sort by priority: low daysUntilStockout first, then by demand
+        predictions.sort((a, b) => {
+          if (a.daysUntilStockout < 14 && b.daysUntilStockout >= 14) return -1;
+          if (b.daysUntilStockout < 14 && a.daysUntilStockout >= 14) return 1;
+          return b.predictedDemand.medium - a.predictedDemand.medium;
+        });
+
+        // Enforce budget cap
+        let runningTotal = 0;
+        predictions = predictions.map(p => {
+          const cost = p.estimatedCost || 0;
+          if (runningTotal + cost <= budget_egp) {
+            runningTotal += cost;
+            return p;
+          } else {
+            // Reduce order to fit remaining budget
+            const remaining = budget_egp - runningTotal;
+            const unitPrice = p.currentStock > 0 && p.estimatedCost
+              ? p.estimatedCost / Math.max(1, p.suggestedOrderQty)
+              : 50; // fallback
+            const affordableQty = unitPrice > 0 ? Math.floor(remaining / unitPrice) : 0;
+            const adjustedCost = affordableQty * unitPrice;
+            runningTotal += adjustedCost;
+            return {
+              ...p,
+              suggestedOrderQty: affordableQty,
+              estimatedCost: Math.round(adjustedCost * 100) / 100,
+              reason: affordableQty > 0
+                ? `${p.reason || ''} (Reduced from original qty due to budget constraint)`
+                : `Budget exhausted - cannot order (${p.reason || ''})`
+            };
+          }
+        });
+
+        const totalUsed = predictions.reduce((sum, p) => sum + (p.estimatedCost || 0), 0);
+
+        forecastResult = {
+          predictions,
+          overallInsights: args.overallInsights || '',
+          seasonalPatterns: args.seasonalPatterns || '',
+          riskAnalysis: args.riskAnalysis || '',
+          timestamp: new Date().toISOString(),
+          budget: {
+            budget_egp,
+            budget_used_egp: Math.round(totalUsed * 100) / 100,
+            budget_remaining_egp: Math.round((budget_egp - totalUsed) * 100) / 100,
+          },
+          settings: {
+            budget_egp,
+            horizon_days: forecastHorizon,
+          }
+        };
+      } else {
+        forecastResult = {
+          predictions,
+          overallInsights: args.overallInsights || '',
+          seasonalPatterns: args.seasonalPatterns || '',
+          riskAnalysis: args.riskAnalysis || '',
+          timestamp: new Date().toISOString()
+        };
+      }
     } else {
-      // Fallback if tool calling fails - generate basic predictions from data
+      // Fallback if tool calling fails
       console.log('Tool calling failed, using fallback predictions');
-      forecastResult = {
-        predictions: productSummary.map(product => ({
+      const predictions = productSummary.map(product => {
+        const predictedQty = Math.round(product.avgMonthlySales * (forecastHorizon / 30));
+        const suggestedOrder = Math.round(product.avgMonthlySales * 2);
+        const unitPrice = product.price_EGP || 50;
+        return {
           drugName: product.name,
           currentStock: product.currentStock,
           avgMonthlySales: product.avgMonthlySales,
           predictedDemand: {
-            low: Math.round(product.avgMonthlySales * (forecastHorizon / 30) * 0.8),
-            medium: Math.round(product.avgMonthlySales * (forecastHorizon / 30)),
-            high: Math.round(product.avgMonthlySales * (forecastHorizon / 30) * 1.2)
+            low: Math.round(predictedQty * 0.8),
+            medium: predictedQty,
+            high: Math.round(predictedQty * 1.2)
           },
           trend: 'stable' as const,
           confidence: 0.7,
           reorderPoint: Math.round(product.avgMonthlySales * 0.5),
-          suggestedOrderQty: Math.round(product.avgMonthlySales * 2),
-          daysUntilStockout: product.currentStock > 0 ? Math.round(product.currentStock / (product.avgMonthlySales / 30)) : 0
-        })),
-        overallInsights: 'Analysis based on historical sales patterns.',
-        seasonalPatterns: 'Seasonal analysis requires more data points.',
-        riskAnalysis: 'Monitor low-stock items for potential stockouts.',
-        timestamp: new Date().toISOString()
-      };
+          suggestedOrderQty: suggestedOrder,
+          daysUntilStockout: product.currentStock > 0 ? Math.round(product.currentStock / (product.avgMonthlySales / 30)) : 0,
+          estimatedCost: Math.round(suggestedOrder * unitPrice * 100) / 100,
+          reason: 'Based on historical average sales velocity'
+        };
+      });
+
+      // Apply budget constraint to fallback too
+      if (budget_egp > 0) {
+        let runningTotal = 0;
+        predictions.forEach(p => {
+          if (runningTotal + p.estimatedCost <= budget_egp) {
+            runningTotal += p.estimatedCost;
+          } else {
+            const remaining = budget_egp - runningTotal;
+            const unitPrice = p.estimatedCost / Math.max(1, p.suggestedOrderQty);
+            const affordableQty = unitPrice > 0 ? Math.floor(remaining / unitPrice) : 0;
+            p.suggestedOrderQty = affordableQty;
+            p.estimatedCost = Math.round(affordableQty * unitPrice * 100) / 100;
+            p.reason = affordableQty > 0
+              ? 'Reduced qty due to budget constraint'
+              : 'Budget exhausted';
+            runningTotal += p.estimatedCost;
+          }
+        });
+
+        const totalUsed = predictions.reduce((sum, p) => sum + p.estimatedCost, 0);
+        forecastResult = {
+          predictions,
+          overallInsights: 'Analysis based on historical sales patterns with budget constraints.',
+          seasonalPatterns: 'Seasonal analysis requires more data points.',
+          riskAnalysis: budget_egp - totalUsed < budget_egp * 0.1
+            ? 'Warning: Budget nearly exhausted. Some items may not be fully covered.'
+            : 'Budget allocation optimized for priority items.',
+          timestamp: new Date().toISOString(),
+          budget: {
+            budget_egp,
+            budget_used_egp: Math.round(totalUsed * 100) / 100,
+            budget_remaining_egp: Math.round((budget_egp - totalUsed) * 100) / 100,
+          },
+          settings: {
+            budget_egp,
+            horizon_days: forecastHorizon,
+          }
+        };
+      } else {
+        forecastResult = {
+          predictions,
+          overallInsights: 'Analysis based on historical sales patterns.',
+          seasonalPatterns: 'Seasonal analysis requires more data points.',
+          riskAnalysis: 'Monitor low-stock items for potential stockouts.',
+          timestamp: new Date().toISOString()
+        };
+      }
     }
 
     // Store forecast results in database
