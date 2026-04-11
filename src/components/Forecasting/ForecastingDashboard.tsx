@@ -166,13 +166,14 @@ const ForecastingDashboard = () => {
       setGeneratingForecast(true);
       toast({
         title: "Generating AI Forecast",
-        description: "Analyzing your sales history with AI...",
+        description: `Analyzing with budget constraint of E£${budget.toLocaleString()}...`,
       });
 
       const { data, error } = await supabase.functions.invoke('generate-forecast', {
         body: {
           forecastHorizon,
-          topProducts: 20
+          topProducts: 20,
+          budget_egp: budget
         }
       });
 
